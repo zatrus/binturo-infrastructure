@@ -1,10 +1,26 @@
 {
     email {{ caddy_email }}
+    # Loopback is required by the ExecReload command shipped in Ubuntu packages.
+    # Caddy validates the Host header for a non-wildcard admin listener.
     admin 127.0.0.1:2019
+    grace_period 30s
+    auto_https disable_redirects
+
+    servers {
+        protocols h1 h2
+        strict_sni_host on
+        max_header_size {{ caddy_max_header_size }}
+        timeouts {
+            read_header 10s
+            read_body 2m
+            write 5m
+            idle 2m
+        }
+        keepalive_interval 30s
+    }
 }
 
 import snippets/*.caddy
 
 # Files in this directory are generated outside this base role. An empty glob is valid.
 import sites-enabled/*.caddy
-

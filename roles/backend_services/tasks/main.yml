@@ -1,0 +1,47 @@
+---
+- name: Install initial backend control scripts without overwriting existing files
+  ansible.builtin.template:
+    src: backend-control.sh.j2
+    dest: "{{ item.directory }}/{{ item.script }}"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0750"
+    force: false
+  loop:
+    - directory: "{{ binturo_root }}/apps/binturo-platform"
+      script: binturo_platform.sh
+    - directory: "{{ binturo_root }}/apps/binturo-organizers"
+      script: binturo_organizers.sh
+  when: binturo_user_available | default(false)
+
+- name: Install backend systemd units
+  ansible.builtin.template:
+    src: backend.service.j2
+    dest: "/etc/systemd/system/{{ item.service }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - service: binturo-platform
+      description: Binturo Platform backend
+      working_directory: "{{ binturo_root }}/apps/binturo-platform"
+      script: binturo_platform.sh
+    - service: binturo-organizers
+      description: Binturo Organizers backend
+      working_directory: "{{ binturo_root }}/apps/binturo-organizers"
+      script: binturo_organizers.sh
+  notify: Reload systemd and restart backend services
+  when: binturo_user_available | default(false)
+
+- name: Enable and start backend services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}.service"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - binturo-platform
+    - binturo-organizers
+  when:
+    - binturo_user_available | default(false)
+    - not ansible_check_mode

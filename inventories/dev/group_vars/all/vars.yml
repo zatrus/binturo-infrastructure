@@ -1,0 +1,30 @@
+---
+
+custom_admin_user: binturo_dev
+custom_ssh_port: 2918
+custom_admin_authorized_key_file: /home/gwerko/.ssh/binturo_ansible_dev.pub
+
+environment_name: dev
+
+binturo_domains:
+  platform: platform.binturo.warszawa
+  organizers: organizers.binturo.warszawa
+
+# The .warszawa development names are not eligible for public ACME certificates.
+caddy_tls_internal: true
+
+postgres_database: binturo_dev_warszawa
+postgres_data_path: "{{ binturo_root }}/persistent/postgres"
+
+prometheus_retention_time: 15d
+prometheus_retention_size: 10GB
+
+# Vaulted values are documented in inventories/dev/vault.example.yml and loaded
+# from group_vars/all/vault.yml.
+postgres_superuser_password: "{{ vault_postgres_superuser_password }}"
+postgres_platform_password: "{{ vault_postgres_platform_password }}"
+postgres_organizers_password: "{{ vault_postgres_organizers_password }}"
+postgres_backup_password: "{{ vault_postgres_backup_password }}"
+
+# Password used by the SSH account for sudo/become. The value is stored in Vault.
+ansible_become_password: "{{ vault_ansible_become_password }}"

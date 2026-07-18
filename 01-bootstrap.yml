@@ -1,0 +1,178 @@
+---
+- name: Bootstrap VPS and expose the target SSH port safely
+  hosts: bootstrap_hosts
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Validate bootstrap variables and public key path
+      ansible.builtin.assert:
+        that:
+          - custom_admin_user | length > 0
+          - (custom_ssh_port | int) > 0
+          - (custom_ssh_port | int) < 65536
+          - (bootstrap_ssh_port | int) != (custom_ssh_port | int)
+          - custom_admin_authorized_key_file is defined
+          - custom_admin_authorized_key_file | length > 0
+        fail_msg: Check the environment variables and custom_admin_authorized_key_file.
+
+    - name: Read the administrator public key from the controller
+      ansible.builtin.set_fact:
+        custom_admin_authorized_key: >-
+          {{ lookup('ansible.builtin.file', custom_admin_authorized_key_file, errors='ignore') | trim }}
+
+    - name: Validate the administrator public key
+      ansible.builtin.assert:
+        that:
+          - custom_admin_authorized_key is match('^ssh-(rsa|ed25519) ')
+        fail_msg: The selected file must contain one public key in OpenSSH format.
+
+  tasks:
+    - name: Install UFW required for the bootstrap firewall
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: true
+
+    - name: Enable IPv6 support in UFW
+      ansible.builtin.lineinfile:
+        path: /etc/default/ufw
+        regexp: '^IPV6='
+        line: IPV6=yes
+        state: present
+      notify: Reload UFW
+
+    - name: Create the target administrator account
+      ansible.builtin.user:
+        name: "{{ custom_admin_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        password_lock: true
+        create_home: true
+        state: present
+
+    - name: Create the administrator SSH directory
+      ansible.builtin.file:
+        path: "/home/{{ custom_admin_user }}/.ssh"
+        state: directory
+        owner: "{{ custom_admin_user }}"
+        group: "{{ custom_admin_user }}"
+        mode: '0700'
+
+    - name: Install the administrator public key
+      ansible.builtin.copy:
+        content: "{{ custom_admin_authorized_key | trim }}\n"
+        dest: "/home/{{ custom_admin_user }}/.ssh/authorized_keys"
+        owner: "{{ custom_admin_user }}"
+        group: "{{ custom_admin_user }}"
+        mode: '0600'
+
+    - name: Allow passwordless sudo for the administrator
+      ansible.builtin.copy:
+        content: "{{ custom_admin_user }} ALL=(ALL:ALL) NOPASSWD:ALL\n"
+        dest: "/etc/sudoers.d/{{ custom_admin_user }}"
+        owner: root
+        group: root
+        mode: '0440'
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Deny incoming traffic by default
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Allow both SSH ports during migration
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "{{ bootstrap_ssh_port }}"
+        - "{{ custom_ssh_port }}"
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+
+    - name: Configure the target SSH port
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Port\s+'
+        line: "Port {{ custom_ssh_port }}"
+        state: present
+      notify: Restart SSH stack
+
+    - name: Disable direct root SSH login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin\s+'
+        line: PermitRootLogin no
+        state: present
+      notify: Restart SSH stack
+
+    - name: Create the SSH socket override directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/ssh.socket.d
+        state: directory
+        mode: '0755'
+
+    - name: Listen on old and new SSH ports during migration
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/ssh.socket.d/listen.conf
+        mode: '0644'
+        content: |
+          [Socket]
+          ListenStream=
+          ListenStream=0.0.0.0:{{ bootstrap_ssh_port }}
+          ListenStream=[::]:{{ bootstrap_ssh_port }}
+          ListenStream=0.0.0.0:{{ custom_ssh_port }}
+          ListenStream=[::]:{{ custom_ssh_port }}
+      notify: Restart SSH stack
+
+    - name: Validate the SSH daemon configuration
+      ansible.builtin.command: /usr/sbin/sshd -t
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: Apply pending SSH changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify the target SSH port from the controller
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ custom_ssh_port }}"
+        timeout: 30
+        connect_timeout: 5
+      delegate_to: localhost
+      become: false
+      when: not ansible_check_mode
+
+    - name: Show the required manual verification
+      ansible.builtin.debug:
+        msg:
+          - "Bootstrap completed. Port {{ bootstrap_ssh_port }} remains available as a fallback."
+          - "Before stage 2, log in as: ssh -p {{ custom_ssh_port }} {{ custom_admin_user }}@{{ ansible_host }}"
+
+  handlers:
+    - name: Reload UFW
+      ansible.builtin.command: /usr/sbin/ufw reload
+      changed_when: true
+
+    - name: Reload systemd configuration
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      listen: Restart SSH stack
+
+    - name: Restart the SSH socket
+      ansible.builtin.systemd_service:
+        name: ssh.socket
+        state: restarted
+        enabled: true
+      listen: Restart SSH stack
+
+    - name: Restart the SSH service
+      ansible.builtin.systemd_service:
+        name: ssh.service
+        state: restarted
+      listen: Restart SSH stack

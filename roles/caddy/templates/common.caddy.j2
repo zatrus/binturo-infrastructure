@@ -1,13 +1,33 @@
 (binturo_common) {
+{% if caddy_tls_internal %}
+    # Development/private domains use Caddy's local certificate authority.
+    tls internal
+{% elif caddy_tls_cloudflare_origin %}
+    # Cloudflare validates this certificate in Full (strict) mode.
+    tls {{ caddy_cloudflare_origin_certificate_path }} {{ caddy_cloudflare_origin_private_key_path }}
+{% endif %}
+
     encode zstd gzip
+
+    # Limit memory/disk pressure and reject unexpectedly large uploads early.
+    request_body {
+        max_size {{ caddy_max_request_body }}
+    }
+
+    # Do not expose common repository, environment and orchestration files.
+    @binturo_sensitive {
+        path /.env /.env.* /.git/* /.svn/* /compose*.yml /docker-compose*.yml
+    }
+    respond @binturo_sensitive 404
+
     header {
         -Server
+        -X-Powered-By
         X-Content-Type-Options nosniff
-        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options {{ caddy_frame_options }}
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+        Strict-Transport-Security "max-age={{ caddy_hsts_max_age }}{% if caddy_hsts_include_subdomains %}; includeSubDomains{% endif %}"
     }
-    log {
-        output stdout
-        format json
-    }
-}
 
+}

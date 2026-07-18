@@ -1,10 +1,29 @@
 ---
+
+ansible_become_password: "{{ vault_ansible_become_password }}"
+
+https_port: 443
+
+fail2ban_sshd_maxretry: 5
+fail2ban_sshd_findtime: 10m
+fail2ban_sshd_bantime: 1h
+fail2ban_sshd_bantime_increment: true
+fail2ban_sshd_bantime_maxtime: 1w
+
+bootstrap_ssh_port: 22
+
+# app configuration
+
 binturo_user: binturo
 binturo_group: binturo
 binturo_uid: 1500
 binturo_gid: 1500
 binturo_root: /srv/binturo
 binturo_timezone: Europe/Warsaw
+binturo_venv_python_executable: python3
+binturo_venv_directories:
+  - "{{ binturo_root }}/apps/binturo-organizers"
+  - "{{ binturo_root }}/apps/binturo-platform"
 
 docker_apt_arch: amd64
 docker_rootless_socket: "unix:///run/user/{{ binturo_uid }}/docker.sock"
@@ -12,6 +31,9 @@ docker_rootless_socket: "unix:///run/user/{{ binturo_uid }}/docker.sock"
 postgres_image: postgres:17.5-bookworm
 postgres_container_name: binturo-postgres
 postgres_port: 5432
+postgres_host_bind_address: 127.0.0.1
+postgres_host_port: 5432
+postgres_legacy_volume_name: "binturo_{{ environment_name }}_postgres_data"
 postgres_superuser: postgres
 postgres_owner_role: binturo_platform_owner
 postgres_platform_user: binturo_platform_app
@@ -22,12 +44,51 @@ postgres_initial_schema: binturo_platform
 binturo_ports:
   platform: 18101
   organizers: 18102
-  frontend_platform: 18201
-  frontend_organizers: 18202
   prometheus: 19090
+
+binturo_frontend_roots:
+  platform: "{{ binturo_root }}/apps/frontend-platform"
+  organizers: "{{ binturo_root }}/apps/frontend-organizers"
 
 caddy_email: admin@example.com
 caddy_dynamic_config_dir: /etc/caddy/sites-enabled
+caddy_log_dir: /var/log/caddy
+caddy_log_roll_at: "00:00"
+caddy_log_roll_size: 100MiB
+caddy_log_roll_keep: 31
+caddy_log_roll_keep_for: 744h
+caddy_bind_addresses:
+  - 0.0.0.0
+  - "[::]"
+caddy_cloudflare_ipv4_ranges:
+  - 103.21.244.0/22
+  - 103.22.200.0/22
+  - 103.31.4.0/22
+  - 104.16.0.0/13
+  - 104.24.0.0/14
+  - 108.162.192.0/18
+  - 131.0.72.0/22
+  - 141.101.64.0/18
+  - 162.158.0.0/15
+  - 172.64.0.0/13
+  - 173.245.48.0/20
+  - 188.114.96.0/20
+  - 190.93.240.0/20
+  - 197.234.240.0/22
+  - 198.41.128.0/17
+caddy_cloudflare_ipv6_ranges:
+  - 2400:cb00::/32
+  - 2606:4700::/32
+  - 2803:f800::/32
+  - 2405:b500::/32
+  - 2405:8100::/32
+  - 2a06:98c0::/29
+  - 2c0f:f248::/32
+caddy_max_request_body: 25MB
+caddy_max_header_size: 32KB
+caddy_hsts_max_age: 31536000
+caddy_hsts_include_subdomains: false
+caddy_frame_options: DENY
 
 prometheus_image: prom/prometheus:v3.5.0
 node_exporter_image: prom/node-exporter:v1.9.1
@@ -37,4 +98,3 @@ postgres_exporter_image: prometheuscommunity/postgres-exporter:v0.17.1
 prometheus_remote_write_url: ""
 prometheus_remote_write_username: ""
 prometheus_remote_write_password: ""
-

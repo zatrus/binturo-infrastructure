@@ -11,36 +11,178 @@
     dest: /etc/apt/keyrings/docker.asc
     mode: "0644"
 
+- name: Check whether Docker repository was configured before this run
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/apt/sources.list.d/docker.list
+    - /etc/apt/sources.list.d/docker.sources
+  register: docker_repository_files
+
+- name: Check whether python3-debian is currently available
+  ansible.builtin.command:
+    cmd: python3 -c "import debian"
+  check_mode: false
+  changed_when: false
+  failed_when: false
+  register: python_debian_check
+
 - name: Configure Docker repository
-  ansible.builtin.apt_repository:
-    repo: "deb [arch={{ docker_apt_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-    filename: docker
+  ansible.builtin.deb822_repository:
+    name: docker
+    types:
+      - deb
+    uris:
+      - https://download.docker.com/linux/ubuntu
+    suites:
+      - "{{ ansible_facts['distribution_release'] }}"
+    components:
+      - stable
+    architectures:
+      - "{{ docker_apt_arch }}"
+    signed_by: /etc/apt/keyrings/docker.asc
     state: present
+  when: python_debian_check.rc == 0
 
 - name: Install Docker client, Compose and rootless components
   ansible.builtin.apt:
     name:
+      - docker-ce
       - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
       - docker-compose-plugin
       - docker-ce-rootless-extras
       - slirp4netns
     state: present
     update_cache: true
+    # Do not allow Debian package scripts to start the rootful daemon. This host
+    # uses only the per-user rootless Docker service.
+    policy_rc_d: 101
+  # On the first --check run repository creation is only simulated, so APT cannot
+  # resolve Docker packages yet. A real run performs this task normally.
+  when: >-
+    not ansible_check_mode or
+    (docker_repository_files.results | selectattr('stat.exists') | list | length > 0)
+
+- name: Check whether Docker CLI is currently available
+  ansible.builtin.command:
+    cmd: docker --version
+  check_mode: false
+  changed_when: false
+  failed_when: false
+  register: docker_cli_check
+
+- name: Record Docker runtime availability
+  ansible.builtin.set_fact:
+    binturo_docker_available: "{{ docker_cli_check.rc == 0 }}"
+
+- name: Check whether Docker daemon binary is currently available
+  ansible.builtin.command:
+    cmd: dockerd --version
+  check_mode: false
+  changed_when: false
+  failed_when: false
+  register: dockerd_binary_check
+
+- name: Record Docker daemon binary availability
+  ansible.builtin.set_fact:
+    binturo_dockerd_available: "{{ dockerd_binary_check.rc == 0 }}"
+
+- name: Disable and mask rootful Docker services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    masked: true
+    state: stopped
+    daemon_reload: true
+  loop:
+    - docker.service
+    - docker.socket
+    - containerd.service
+  when: binturo_dockerd_available
 
 - name: Check whether rootless Docker user service exists
   ansible.builtin.stat:
     path: "/home/{{ binturo_user }}/.config/systemd/user/docker.service"
   register: rootless_docker_service
 
-- name: Install rootless Docker daemon
-  become: true
-  become_user: "{{ binturo_user }}"
+- name: Check subordinate UID range for rootless Docker
   ansible.builtin.command:
-    cmd: dockerd-rootless-setuptool.sh install --force
-  environment:
-    HOME: "/home/{{ binturo_user }}"
-    XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
-  when: not rootless_docker_service.stat.exists
+    argv:
+      - awk
+      - "-F:"
+      - -v
+      - "user={{ binturo_user }}"
+      - '$1 == user && $3 >= 65536 { found=1 } END { exit !found }'
+      - /etc/subuid
+  check_mode: false
+  changed_when: false
+  failed_when: false
+  register: binturo_subuid_check
+  when: binturo_user_available | default(false)
+
+- name: Check subordinate GID range for rootless Docker
+  ansible.builtin.command:
+    argv:
+      - awk
+      - "-F:"
+      - -v
+      - "user={{ binturo_user }}"
+      - '$1 == user && $3 >= 65536 { found=1 } END { exit !found }'
+      - /etc/subgid
+  check_mode: false
+  changed_when: false
+  failed_when: false
+  register: binturo_subgid_check
+  when: binturo_user_available | default(false)
+
+- name: Validate subordinate UID and GID ranges
+  ansible.builtin.assert:
+    that:
+      - binturo_subuid_check.rc == 0
+      - binturo_subgid_check.rc == 0
+    fail_msg: >-
+      Rootless Docker requires at least 65536 subordinate UIDs and GIDs for
+      {{ binturo_user }} in /etc/subuid and /etc/subgid.
+  when: binturo_user_available | default(false)
+
+- name: Install rootless Docker daemon
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available
+    - binturo_dockerd_available
+    - not ansible_check_mode
+    - not rootless_docker_service.stat.exists
+  block:
+    - name: Run rootless Docker setup tool
+      become: true
+      become_user: "{{ binturo_user }}"
+      ansible.builtin.command:
+        cmd: dockerd-rootless-setuptool.sh install --force
+      environment:
+        HOME: "/home/{{ binturo_user }}"
+        XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ binturo_uid }}/bus"
+
+  rescue:
+    - name: Read rootless Docker journal after setup failure
+      become: true
+      become_user: "{{ binturo_user }}"
+      ansible.builtin.command:
+        cmd: journalctl --user --unit docker.service --no-pager -n 80
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ binturo_uid }}/bus"
+      changed_when: false
+      failed_when: false
+      register: rootless_docker_setup_journal
+
+    - name: Report rootless Docker setup failure
+      ansible.builtin.fail:
+        msg: |-
+          Rootless Docker setup failed. Service journal:
+          {{ rootless_docker_setup_journal.stdout | default('Journal unavailable') }}
 
 - name: Create rootless Docker configuration directory
   ansible.builtin.file:
@@ -49,6 +191,7 @@
     owner: "{{ binturo_user }}"
     group: "{{ binturo_group }}"
     mode: "0700"
+  when: binturo_user_available | default(false)
 
 - name: Configure rootless Docker daemon
   ansible.builtin.template:
@@ -58,16 +201,43 @@
     group: "{{ binturo_group }}"
     mode: "0600"
   notify: Restart rootless Docker
+  when: binturo_user_available | default(false)
 
 - name: Enable and start rootless Docker service
-  become: true
-  become_user: "{{ binturo_user }}"
-  ansible.builtin.systemd:
-    name: docker.service
-    scope: user
-    enabled: true
-    state: started
-    daemon_reload: true
-  environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
-    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ binturo_uid }}/bus"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available
+    - binturo_dockerd_available
+    - not ansible_check_mode or rootless_docker_service.stat.exists
+  block:
+    - name: Start rootless Docker user service
+      become: true
+      become_user: "{{ binturo_user }}"
+      ansible.builtin.systemd:
+        name: docker.service
+        scope: user
+        enabled: true
+        state: started
+        daemon_reload: true
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ binturo_uid }}/bus"
+
+  rescue:
+    - name: Read rootless Docker journal after service failure
+      become: true
+      become_user: "{{ binturo_user }}"
+      ansible.builtin.command:
+        cmd: journalctl --user --unit docker.service --no-pager -n 80
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ binturo_uid }}/bus"
+      changed_when: false
+      failed_when: false
+      register: rootless_docker_service_journal
+
+    - name: Report rootless Docker service failure
+      ansible.builtin.fail:
+        msg: |-
+          Rootless Docker service failed to start. Service journal:
+          {{ rootless_docker_service_journal.stdout | default('Journal unavailable') }}

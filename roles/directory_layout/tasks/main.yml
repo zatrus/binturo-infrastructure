@@ -15,8 +15,7 @@
     - { path: "{{ binturo_root }}/apps/frontend-platform" }
     - { path: "{{ binturo_root }}/apps/frontend-organizers" }
     - { path: "{{ binturo_root }}/shared/binturo-organizers-files", mode: "0770" }
-    - { path: "{{ binturo_root }}/persistent/postgres" }
     - { path: "{{ binturo_root }}/persistent/prometheus" }
     - { path: "{{ binturo_root }}/monitoring" }
     - { path: "{{ binturo_root }}/backups" }
-
+  when: binturo_user_available | default(false)

@@ -14,9 +14,30 @@
     shell: /bin/bash
     create_home: true
     state: present
+    password_lock: true
 
 - name: Enable persistent user services after logout
   ansible.builtin.command:
     cmd: "loginctl enable-linger {{ binturo_user }}"
     creates: "/var/lib/systemd/linger/{{ binturo_user }}"
 
+- name: Check whether Binturo user currently exists
+  ansible.builtin.command:
+    cmd: "getent passwd {{ binturo_user }}"
+  check_mode: false
+  changed_when: false
+  failed_when: false
+  register: binturo_user_check
+
+- name: Record Binturo user availability
+  ansible.builtin.set_fact:
+    binturo_user_available: "{{ binturo_user_check.rc == 0 }}"
+
+- name: Create Ansible remote temporary directory for Binturo user
+  ansible.builtin.file:
+    path: "/home/{{ binturo_user }}/.ansible/tmp"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0700"
+  when: binturo_user_available

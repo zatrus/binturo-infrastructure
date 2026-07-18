@@ -1,0 +1,26 @@
+[Unit]
+Description={{ item.description }}
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User={{ binturo_user }}
+Group={{ binturo_group }}
+WorkingDirectory={{ item.working_directory }}
+Environment=XDG_RUNTIME_DIR=/run/user/{{ binturo_uid }}
+Environment=DOCKER_HOST={{ docker_rootless_socket }}
+ExecStartPre=/bin/bash -c 'for attempt in {1..60}; do docker info >/dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
+ExecStartPre=/bin/bash -c 'for attempt in {1..60}; do docker exec {{ postgres_container_name }} pg_isready -U {{ postgres_superuser }} >/dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
+ExecStart={{ item.working_directory }}/{{ item.script }} start
+ExecStop={{ item.working_directory }}/{{ item.script }} stop
+TimeoutStartSec=300
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

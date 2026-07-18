@@ -5,6 +5,46 @@
     state: present
     update_cache: true
 
+- name: Validate Caddy TLS mode
+  ansible.builtin.assert:
+    that:
+      - (caddy_tls_internal | bool) != (caddy_tls_cloudflare_origin | bool)
+      - caddy_bind_addresses | length > 0
+      - not (caddy_tls_cloudflare_origin | bool) or
+        ((caddy_cloudflare_ipv4_ranges + caddy_cloudflare_ipv6_ranges) | length > 0)
+      - not (caddy_tls_cloudflare_origin | bool) or
+        (caddy_cloudflare_origin_certificate | default('') | trim | length > 0)
+      - not (caddy_tls_cloudflare_origin | bool) or
+        (caddy_cloudflare_origin_private_key | default('') | trim | length > 0)
+    fail_msg: >-
+      Select exactly one Caddy TLS mode. Local environments use
+      caddy_tls_internal=true. Production uses
+      caddy_tls_cloudflare_origin=true and must provide its Origin CA
+      certificate and private key through Vault. Configure at least one Caddy
+      bind address.
+  no_log: true
+
+- name: Allow Caddy to read Binturo application files
+  ansible.builtin.user:
+    name: caddy
+    groups: "{{ binturo_group }}"
+    append: true
+  notify:
+    - Validate and reload Caddy
+    - Restart Caddy after group membership change
+
+- name: Check whether Caddy is currently available
+  ansible.builtin.command:
+    cmd: caddy version
+  check_mode: false
+  changed_when: false
+  failed_when: false
+  register: caddy_cli_check
+
+- name: Record Caddy availability
+  ansible.builtin.set_fact:
+    binturo_caddy_available: "{{ caddy_cli_check.rc == 0 }}"
+
 - name: Create Caddy configuration directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -15,6 +55,53 @@
   loop:
     - /etc/caddy/snippets
     - "{{ caddy_dynamic_config_dir }}"
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Create Caddy access log directory
+  ansible.builtin.file:
+    path: "{{ caddy_log_dir }}"
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: "0750"
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Create Cloudflare Origin CA certificate directory
+  ansible.builtin.file:
+    path: "{{ caddy_cloudflare_cert_dir }}"
+    state: directory
+    owner: root
+    group: caddy
+    mode: "0750"
+  when:
+    - caddy_tls_cloudflare_origin | bool
+    - not ansible_check_mode or binturo_caddy_available
+
+- name: Install Cloudflare Origin CA certificate
+  ansible.builtin.copy:
+    content: "{{ caddy_cloudflare_origin_certificate | trim }}\n"
+    dest: "{{ caddy_cloudflare_origin_certificate_path }}"
+    owner: root
+    group: caddy
+    mode: "0640"
+  no_log: true
+  notify: Validate and reload Caddy
+  when:
+    - caddy_tls_cloudflare_origin | bool
+    - not ansible_check_mode or binturo_caddy_available
+
+- name: Install Cloudflare Origin CA private key
+  ansible.builtin.copy:
+    content: "{{ caddy_cloudflare_origin_private_key | trim }}\n"
+    dest: "{{ caddy_cloudflare_origin_private_key_path }}"
+    owner: root
+    group: caddy
+    mode: "0640"
+  no_log: true
+  notify: Validate and reload Caddy
+  when:
+    - caddy_tls_cloudflare_origin | bool
+    - not ansible_check_mode or binturo_caddy_available
 
 - name: Install main Caddy configuration
   ansible.builtin.template:
@@ -24,6 +111,7 @@
     group: caddy
     mode: "0640"
   notify: Validate and reload Caddy
+  when: not ansible_check_mode or binturo_caddy_available
 
 - name: Install common Caddy snippet
   ansible.builtin.template:
@@ -33,10 +121,34 @@
     group: caddy
     mode: "0640"
   notify: Validate and reload Caddy
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Install Binturo application sites
+  ansible.builtin.template:
+    src: application-site.caddy.j2
+    dest: "{{ caddy_dynamic_config_dir }}/{{ item.filename }}"
+    owner: root
+    group: caddy
+    mode: "0640"
+  loop:
+    - filename: 10-platform.caddy
+      domain: "{{ binturo_domains.platform }}"
+      backend_port: "{{ binturo_ports.platform }}"
+      frontend_root: "{{ binturo_frontend_roots.platform }}"
+      log_filename: platform.log
+    - filename: 20-organizers.caddy
+      domain: "{{ binturo_domains.organizers }}"
+      backend_port: "{{ binturo_ports.organizers }}"
+      frontend_root: "{{ binturo_frontend_roots.organizers }}"
+      log_filename: organizers.log
+  notify:
+    - Validate and reload Caddy
+    - Restart Caddy after access log configuration change
+  when: not ansible_check_mode or binturo_caddy_available
 
 - name: Ensure Caddy is enabled and running
   ansible.builtin.systemd:
     name: caddy
     enabled: true
     state: started
-
+  when: binturo_caddy_available

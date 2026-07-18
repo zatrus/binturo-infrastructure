@@ -10,4 +10,7 @@
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ binturo_uid }}/bus"
-
+  when:
+    - binturo_docker_available | default(false)
+    - binturo_dockerd_available | default(false)
+    - rootless_docker_service.stat.exists | default(false)

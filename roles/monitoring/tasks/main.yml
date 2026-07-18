@@ -7,6 +7,7 @@
     group: "{{ binturo_group }}"
     mode: "0640"
   notify: Restart monitoring stack
+  when: binturo_user_available | default(false)
 
 - name: Install postgres_exporter configuration
   ansible.builtin.template:
@@ -19,6 +20,7 @@
     mode: "0644"
   no_log: true
   notify: Restart monitoring stack
+  when: binturo_user_available | default(false)
 
 - name: Install monitoring Compose definition
   ansible.builtin.template:
@@ -28,6 +30,7 @@
     group: "{{ binturo_group }}"
     mode: "0640"
   notify: Restart monitoring stack
+  when: binturo_user_available | default(false)
 
 - name: Start monitoring stack
   become: true
@@ -40,3 +43,6 @@
     state: present
   environment:
     DOCKER_HOST: "{{ docker_rootless_socket }}"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)

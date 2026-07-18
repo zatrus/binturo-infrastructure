@@ -1,4 +1,115 @@
 ---
+- name: Check the PostgreSQL data directory
+  ansible.builtin.stat:
+    path: "{{ postgres_data_path }}"
+  register: postgres_data_directory
+  when: binturo_user_available | default(false)
+
+- name: Create the initial PostgreSQL data directory
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.file:
+    path: "{{ postgres_data_path }}"
+    state: directory
+    mode: "0750"
+  when:
+    - binturo_user_available | default(false)
+    - not postgres_data_directory.stat.exists
+
+- name: Check whether the target PostgreSQL data directory is initialized
+  ansible.builtin.stat:
+    path: "{{ postgres_data_path }}/PG_VERSION"
+  register: postgres_target_data
+  when: binturo_user_available | default(false)
+
+- name: Check for the legacy PostgreSQL Docker volume
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - volume
+      - inspect
+      - "{{ postgres_legacy_volume_name }}"
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  register: postgres_legacy_volume
+  changed_when: false
+  failed_when: postgres_legacy_volume.rc not in [0, 1]
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+
+- name: Stop PostgreSQL before migrating its legacy volume
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - stop
+      - "{{ postgres_container_name }}"
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  register: postgres_stop_for_migration
+  changed_when: postgres_stop_for_migration.rc == 0
+  failed_when: postgres_stop_for_migration.rc not in [0, 1]
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+    - not postgres_target_data.stat.exists
+    - postgres_legacy_volume.rc == 0
+    - not ansible_check_mode
+
+- name: Migrate PostgreSQL from the legacy volume to binturo_root
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - --rm
+      - --entrypoint
+      - /bin/sh
+      - --volume
+      - "{{ postgres_legacy_volume_name }}:/source:ro"
+      - --volume
+      - "{{ postgres_data_path }}:/target"
+      - "{{ postgres_image }}"
+      - -c
+      - cp -a /source/. /target/ && chown -R postgres:postgres /target
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+    - not postgres_target_data.stat.exists
+    - postgres_legacy_volume.rc == 0
+    - not ansible_check_mode
+
+- name: Prepare ownership of a new PostgreSQL data directory
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - --rm
+      - --entrypoint
+      - /bin/sh
+      - --volume
+      - "{{ postgres_data_path }}:/target"
+      - "{{ postgres_image }}"
+      - -c
+      - chown postgres:postgres /target
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+    - not postgres_target_data.stat.exists
+    - postgres_legacy_volume.rc == 1
+    - not ansible_check_mode
+
 - name: Write PostgreSQL secret files
   ansible.builtin.copy:
     content: "{{ item.value }}\n"
@@ -12,6 +123,7 @@
     - { name: postgres_organizers_password, value: "{{ postgres_organizers_password }}" }
     - { name: postgres_backup_password, value: "{{ postgres_backup_password }}" }
   no_log: true
+  when: binturo_user_available | default(false)
 
 - name: Install PostgreSQL bootstrap SQL
   ansible.builtin.template:
@@ -20,6 +132,7 @@
     owner: "{{ binturo_user }}"
     group: "{{ binturo_group }}"
     mode: "0640"
+  when: binturo_user_available | default(false)
 
 - name: Install PostgreSQL bootstrap script
   ansible.builtin.template:
@@ -28,6 +141,7 @@
     owner: "{{ binturo_user }}"
     group: "{{ binturo_group }}"
     mode: "0750"
+  when: binturo_user_available | default(false)
 
 - name: Install PostgreSQL Compose definition
   ansible.builtin.template:
@@ -36,6 +150,98 @@
     owner: "{{ binturo_user }}"
     group: "{{ binturo_group }}"
     mode: "0640"
+  when: binturo_user_available | default(false)
+
+- name: Check whether the existing database network is internal
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - network
+      - inspect
+      - --format
+      - "{{ '{{' }}.Internal{{ '}}' }}"
+      - "binturo_{{ environment_name }}_database"
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  check_mode: false
+  register: postgres_database_network
+  changed_when: false
+  failed_when: postgres_database_network.rc not in [0, 1]
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+
+- name: Check whether the monitoring Compose definition exists
+  ansible.builtin.stat:
+    path: "{{ binturo_root }}/compose/compose.monitoring.yml"
+  register: postgres_monitoring_compose
+  when: binturo_user_available | default(false)
+
+- name: Stop monitoring before replacing the internal database network
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-name
+      - "binturo-monitoring-{{ environment_name }}"
+      - --file
+      - "{{ binturo_root }}/compose/compose.monitoring.yml"
+      - down
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+    - postgres_database_network.rc == 0
+    - postgres_database_network.stdout | trim == 'true'
+    - postgres_monitoring_compose.stat.exists
+    - not ansible_check_mode
+
+- name: Stop PostgreSQL before replacing the internal database network
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-name
+      - "binturo-{{ environment_name }}"
+      - --file
+      - "{{ binturo_root }}/compose/compose.postgres.yml"
+      - down
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+    - postgres_database_network.rc == 0
+    - postgres_database_network.stdout | trim == 'true'
+    - not ansible_check_mode
+
+- name: Remove the obsolete internal database network
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - network
+      - rm
+      - "binturo_{{ environment_name }}_database"
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  register: postgres_remove_internal_network
+  changed_when: postgres_remove_internal_network.rc == 0
+  failed_when: postgres_remove_internal_network.rc not in [0, 1]
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+    - postgres_database_network.rc == 0
+    - postgres_database_network.stdout | trim == 'true'
+    - not ansible_check_mode
 
 - name: Start PostgreSQL
   become: true
@@ -50,6 +256,9 @@
     state: present
   environment:
     DOCKER_HOST: "{{ docker_rootless_socket }}"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
 
 - name: Wait until PostgreSQL is healthy
   become: true
@@ -63,6 +272,9 @@
   retries: 30
   delay: 2
   until: postgres_health.stdout == "healthy"
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
 
 - name: Reconcile PostgreSQL database, roles and initial schema
   become: true
@@ -77,4 +289,7 @@
     DOCKER_HOST: "{{ docker_rootless_socket }}"
   changed_when: false
   no_log: true
-
+  when:
+    - binturo_user_available | default(false)
+    - binturo_docker_available | default(false)
+    - not ansible_check_mode

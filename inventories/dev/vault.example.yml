@@ -3,4 +3,4 @@ vault_postgres_superuser_password: CHANGE_ME
 vault_postgres_platform_password: CHANGE_ME
 vault_postgres_organizers_password: CHANGE_ME
 vault_postgres_backup_password: CHANGE_ME
-
+vault_ansible_become_password: CHANGE_ME

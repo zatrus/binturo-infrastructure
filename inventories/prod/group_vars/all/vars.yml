@@ -1,0 +1,32 @@
+---
+
+custom_admin_user: binturo_p
+custom_ssh_port: 2416
+custom_admin_authorized_key_file: /home/gwerko/ovh/binturo-ovh-prod.pub
+environment_name: prod
+
+binturo_domains:
+  platform: platform.binturo.com
+  organizers: app.binturo.com
+
+# Cloudflare terminates visitor TLS and validates this host with Origin CA.
+caddy_tls_internal: false
+caddy_tls_cloudflare_origin: true
+caddy_cloudflare_origin_certificate: "{{ vault_cloudflare_origin_certificate }}"
+caddy_cloudflare_origin_private_key: "{{ vault_cloudflare_origin_private_key }}"
+
+postgres_database: binturo_prod
+postgres_data_path: "{{ binturo_root }}/persistent/postgres"
+
+prometheus_retention_time: 10d
+prometheus_retention_size: 10GB
+
+# Vaulted values are documented in inventories/prod/vault.example.yml and loaded
+# from group_vars/all/vault.yml.
+postgres_superuser_password: "{{ vault_postgres_superuser_password }}"
+postgres_platform_password: "{{ vault_postgres_platform_password }}"
+postgres_organizers_password: "{{ vault_postgres_organizers_password }}"
+postgres_backup_password: "{{ vault_postgres_backup_password }}"
+
+# Password used by the SSH account for sudo/become. The value is stored in Vault.
+ansible_become_password: "{{ vault_ansible_become_password }}"

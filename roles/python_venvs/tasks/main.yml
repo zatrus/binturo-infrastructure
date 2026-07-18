@@ -1,0 +1,37 @@
+---
+- name: Validate Python virtual environment configuration
+  ansible.builtin.assert:
+    that:
+      - binturo_venv_python_executable | length > 0
+      - binturo_venv_directories | length > 0
+    fail_msg: >-
+      Configure binturo_venv_python_executable and at least one path in
+      binturo_venv_directories.
+
+- name: Check the configured Python executable
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ binturo_venv_python_executable }}"
+      - --version
+  changed_when: false
+  when:
+    - binturo_user_available | default(false)
+    - not ansible_check_mode
+
+- name: Create application Python virtual environments
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ binturo_venv_python_executable }}"
+      - -m
+      - venv
+      - venv
+    chdir: "{{ item }}"
+    creates: "{{ item }}/venv/bin/python"
+  loop: "{{ binturo_venv_directories }}"
+  when:
+    - binturo_user_available | default(false)
+    - not ansible_check_mode

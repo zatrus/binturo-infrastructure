@@ -2,16 +2,18 @@ services:
   postgres:
     image: {{ postgres_image }}
     container_name: {{ postgres_container_name }}
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: {{ postgres_superuser }}
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
       POSTGRES_DB: postgres
       TZ: {{ binturo_timezone }}
+    ports:
+      - "{{ postgres_host_bind_address }}:{{ postgres_host_port }}:{{ postgres_port }}"
     secrets:
       - postgres_superuser_password
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - {{ postgres_data_path }}:/var/lib/postgresql/data
     networks:
       - database
     healthcheck:
@@ -47,14 +49,9 @@ services:
     security_opt:
       - no-new-privileges:true
 
-volumes:
-  postgres_data:
-    name: binturo_{{ environment_name }}_postgres_data
-
 networks:
   database:
     name: binturo_{{ environment_name }}_database
-    internal: true
 
 secrets:
   postgres_superuser_password:
@@ -65,4 +62,3 @@ secrets:
     file: {{ binturo_root }}/secrets/postgres_organizers_password
   postgres_backup_password:
     file: {{ binturo_root }}/secrets/postgres_backup_password
-

@@ -10,4 +10,4 @@
     state: restarted
   environment:
     DOCKER_HOST: "{{ docker_rootless_socket }}"
-
+  when: binturo_docker_available | default(false)

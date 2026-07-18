@@ -4,10 +4,52 @@
     cmd: caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
   changed_when: false
   listen: Validate and reload Caddy
+  when: binturo_caddy_available | default(false)
 
-- name: Reload Caddy
+- name: Reload Caddy through loopback admin API
+  ansible.builtin.command:
+    cmd: >-
+      caddy reload
+      --config /etc/caddy/Caddyfile
+      --adapter caddyfile
+      --address 127.0.0.1:2019
+  register: caddy_loopback_reload
+  changed_when: caddy_loopback_reload.rc == 0
+  failed_when: false
+  listen: Validate and reload Caddy
+  when: binturo_caddy_available | default(false)
+
+- name: Reload Caddy through legacy Unix admin socket
+  ansible.builtin.command:
+    cmd: >-
+      caddy reload
+      --config /etc/caddy/Caddyfile
+      --adapter caddyfile
+      --address unix//run/caddy-admin.sock
+  register: caddy_unix_reload
+  changed_when: caddy_unix_reload.rc == 0
+  failed_when: false
+  listen: Validate and reload Caddy
+  when:
+    - binturo_caddy_available | default(false)
+    - caddy_loopback_reload.rc != 0
+
+- name: Restart Caddy when neither admin endpoint is available
   ansible.builtin.systemd:
     name: caddy
-    state: reloaded
+    state: restarted
   listen: Validate and reload Caddy
+  when:
+    - binturo_caddy_available | default(false)
+    - caddy_loopback_reload.rc != 0
+    - (caddy_unix_reload.rc | default(0)) != 0
 
+- name: Restart Caddy after group membership change
+  ansible.builtin.systemd_service:
+    name: caddy.service
+    state: restarted
+
+- name: Restart Caddy after access log configuration change
+  ansible.builtin.systemd_service:
+    name: caddy.service
+    state: restarted

@@ -1,0 +1,6 @@
+---
+caddy_tls_internal: false
+caddy_tls_cloudflare_origin: false
+caddy_cloudflare_cert_dir: /etc/caddy/certs
+caddy_cloudflare_origin_certificate_path: /etc/caddy/certs/cloudflare-origin.pem
+caddy_cloudflare_origin_private_key_path: /etc/caddy/certs/cloudflare-origin.key

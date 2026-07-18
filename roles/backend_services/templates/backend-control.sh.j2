@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Initial placeholder managed by Ansible only while this file does not exist.
+# A separate process may replace its contents; later Ansible runs will preserve it.
+
+case "${1:-}" in
+  start)
+    exit 0
+    ;;
+  stop)
+    exit 0
+    ;;
+  status)
+    exit 0
+    ;;
+  *)
+    echo "Usage: $0 start|stop|status" >&2
+    exit 2
+    ;;
+esac

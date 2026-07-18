@@ -1,13 +1,14 @@
 ---
 - name: Configure Binturo application host
-  hosts: binturo_hosts
+  hosts: hardened_hosts
   become: true
   roles:
     - common
     - app_user
     - docker_rootless
     - directory_layout
+    - python_venvs
     - postgres
+    - backend_services
     - caddy
     - monitoring
-

@@ -2,7 +2,7 @@ services:
   prometheus:
     image: {{ prometheus_image }}
     container_name: binturo-prometheus
-    restart: unless-stopped
+    restart: always
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -24,7 +24,7 @@ services:
   node-exporter:
     image: {{ node_exporter_image }}
     container_name: binturo-node-exporter
-    restart: unless-stopped
+    restart: always
     command:
       - --path.rootfs=/host
     volumes:
@@ -37,7 +37,7 @@ services:
   postgres-exporter:
     image: {{ postgres_exporter_image }}
     container_name: binturo-postgres-exporter
-    restart: unless-stopped
+    restart: always
     command:
       - --config.file=/run/postgres-exporter/config.yml
     volumes:
@@ -58,4 +58,3 @@ networks:
   database:
     external: true
     name: binturo_{{ environment_name }}_database
-
