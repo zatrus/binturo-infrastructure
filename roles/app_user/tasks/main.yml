@@ -1,0 +1,22 @@
+---
+- name: Create Binturo system group
+  ansible.builtin.group:
+    name: "{{ binturo_group }}"
+    gid: "{{ binturo_gid }}"
+    state: present
+
+- name: Create unprivileged Binturo user
+  ansible.builtin.user:
+    name: "{{ binturo_user }}"
+    uid: "{{ binturo_uid }}"
+    group: "{{ binturo_group }}"
+    home: "/home/{{ binturo_user }}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Enable persistent user services after logout
+  ansible.builtin.command:
+    cmd: "loginctl enable-linger {{ binturo_user }}"
+    creates: "/var/lib/systemd/linger/{{ binturo_user }}"
+

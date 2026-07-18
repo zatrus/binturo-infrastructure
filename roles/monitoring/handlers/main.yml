@@ -1,0 +1,13 @@
+---
+- name: Restart monitoring stack
+  become: true
+  become_user: "{{ binturo_user }}"
+  community.docker.docker_compose_v2:
+    project_src: "{{ binturo_root }}/compose"
+    files:
+      - compose.monitoring.yml
+    project_name: "binturo-monitoring-{{ environment_name }}"
+    state: restarted
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+

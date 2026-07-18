@@ -1,0 +1,22 @@
+---
+- name: Create Binturo directory layout
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "{{ item.mode | default('0750') }}"
+  loop:
+    - { path: "{{ binturo_root }}" }
+    - { path: "{{ binturo_root }}/compose" }
+    - { path: "{{ binturo_root }}/secrets", mode: "0700" }
+    - { path: "{{ binturo_root }}/apps/binturo-platform" }
+    - { path: "{{ binturo_root }}/apps/binturo-organizers" }
+    - { path: "{{ binturo_root }}/apps/frontend-platform" }
+    - { path: "{{ binturo_root }}/apps/frontend-organizers" }
+    - { path: "{{ binturo_root }}/shared/binturo-organizers-files", mode: "0770" }
+    - { path: "{{ binturo_root }}/persistent/postgres" }
+    - { path: "{{ binturo_root }}/persistent/prometheus" }
+    - { path: "{{ binturo_root }}/monitoring" }
+    - { path: "{{ binturo_root }}/backups" }
+

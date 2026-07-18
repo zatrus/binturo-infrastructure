@@ -1,0 +1,10 @@
+{
+    email {{ caddy_email }}
+    admin 127.0.0.1:2019
+}
+
+import snippets/*.caddy
+
+# Files in this directory are generated outside this base role. An empty glob is valid.
+import sites-enabled/*.caddy
+

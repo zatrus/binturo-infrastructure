@@ -1,0 +1,42 @@
+---
+- name: Install Caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: true
+
+- name: Create Caddy configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: caddy
+    mode: "0750"
+  loop:
+    - /etc/caddy/snippets
+    - "{{ caddy_dynamic_config_dir }}"
+
+- name: Install main Caddy configuration
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: caddy
+    mode: "0640"
+  notify: Validate and reload Caddy
+
+- name: Install common Caddy snippet
+  ansible.builtin.template:
+    src: common.caddy.j2
+    dest: /etc/caddy/snippets/common.caddy
+    owner: root
+    group: caddy
+    mode: "0640"
+  notify: Validate and reload Caddy
+
+- name: Ensure Caddy is enabled and running
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true
+    state: started
+

@@ -1,0 +1,35 @@
+\set ON_ERROR_STOP on
+
+SELECT format('CREATE ROLE %I NOLOGIN', :'owner_role')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'owner_role') \gexec
+
+SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', :'platform_user', :'platform_password')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'platform_user') \gexec
+SELECT format('ALTER ROLE %I PASSWORD %L', :'platform_user', :'platform_password') \gexec
+
+SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', :'organizers_user', :'organizers_password')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'organizers_user') \gexec
+SELECT format('ALTER ROLE %I PASSWORD %L', :'organizers_user', :'organizers_password') \gexec
+
+SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', :'backup_user', :'backup_password')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'backup_user') \gexec
+SELECT format('ALTER ROLE %I PASSWORD %L', :'backup_user', :'backup_password') \gexec
+
+SELECT format('GRANT %I TO %I', :'owner_role', :'platform_user') \gexec
+SELECT format('GRANT pg_read_all_data TO %I', :'backup_user') \gexec
+SELECT format('GRANT pg_monitor TO %I', :'backup_user') \gexec
+
+SELECT format('CREATE DATABASE %I OWNER %I ENCODING ''UTF8'' TEMPLATE template0', :'database_name', :'owner_role')
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'database_name') \gexec
+
+SELECT format('REVOKE ALL ON DATABASE %I FROM PUBLIC', :'database_name') \gexec
+SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'database_name', :'platform_user') \gexec
+SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'database_name', :'organizers_user') \gexec
+SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'database_name', :'backup_user') \gexec
+
+\connect :database_name
+
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+SELECT format('CREATE SCHEMA IF NOT EXISTS %I AUTHORIZATION %I', :'initial_schema', :'owner_role') \gexec
+SELECT format('ALTER SCHEMA %I OWNER TO %I', :'initial_schema', :'owner_role') \gexec
+SELECT format('GRANT USAGE, CREATE ON SCHEMA %I TO %I', :'initial_schema', :'platform_user') \gexec

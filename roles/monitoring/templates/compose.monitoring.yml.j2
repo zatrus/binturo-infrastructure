@@ -1,0 +1,61 @@
+services:
+  prometheus:
+    image: {{ prometheus_image }}
+    container_name: binturo-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time={{ prometheus_retention_time }}
+      - --storage.tsdb.retention.size={{ prometheus_retention_size }}
+      - --web.enable-lifecycle
+    ports:
+      - "127.0.0.1:{{ binturo_ports.prometheus }}:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - {{ binturo_root }}/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring
+    security_opt:
+      - no-new-privileges:true
+
+  node-exporter:
+    image: {{ node_exporter_image }}
+    container_name: binturo-node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - monitoring
+    security_opt:
+      - no-new-privileges:true
+
+  postgres-exporter:
+    image: {{ postgres_exporter_image }}
+    container_name: binturo-postgres-exporter
+    restart: unless-stopped
+    command:
+      - --config.file=/run/postgres-exporter/config.yml
+    volumes:
+      - {{ binturo_root }}/secrets/postgres-exporter.yml:/run/postgres-exporter/config.yml:ro
+    networks:
+      - monitoring
+      - database
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  prometheus_data:
+    name: binturo_{{ environment_name }}_prometheus_data
+
+networks:
+  monitoring:
+    name: binturo_{{ environment_name }}_monitoring
+  database:
+    external: true
+    name: binturo_{{ environment_name }}_database
+

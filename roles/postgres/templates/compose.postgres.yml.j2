@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: {{ postgres_image }}
+    container_name: {{ postgres_container_name }}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: {{ postgres_superuser }}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
+      POSTGRES_DB: postgres
+      TZ: {{ binturo_timezone }}
+    secrets:
+      - postgres_superuser_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ postgres_superuser }} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  postgres-bootstrap:
+    image: {{ postgres_image }}
+    profiles: ["bootstrap"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: "{{ postgres_port }}"
+      PGUSER: {{ postgres_superuser }}
+    secrets:
+      - postgres_superuser_password
+      - postgres_platform_password
+      - postgres_organizers_password
+      - postgres_backup_password
+    volumes:
+      - ./postgres-bootstrap.sh:/opt/binturo/bootstrap.sh:ro
+      - ./postgres-bootstrap.sql:/opt/binturo/bootstrap.sql:ro
+    entrypoint: ["/bin/bash", "/opt/binturo/bootstrap.sh"]
+    networks:
+      - database
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+    name: binturo_{{ environment_name }}_postgres_data
+
+networks:
+  database:
+    name: binturo_{{ environment_name }}_database
+    internal: true
+
+secrets:
+  postgres_superuser_password:
+    file: {{ binturo_root }}/secrets/postgres_superuser_password
+  postgres_platform_password:
+    file: {{ binturo_root }}/secrets/postgres_platform_password
+  postgres_organizers_password:
+    file: {{ binturo_root }}/secrets/postgres_organizers_password
+  postgres_backup_password:
+    file: {{ binturo_root }}/secrets/postgres_backup_password
+

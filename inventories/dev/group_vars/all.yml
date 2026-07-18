@@ -1,0 +1,19 @@
+---
+environment_name: dev
+
+binturo_domains:
+  platform: platform.dev.example.com
+  organizers: organizers.dev.example.com
+
+postgres_database: binturo_dev
+postgres_data_path: "{{ binturo_root }}/persistent/postgres"
+
+prometheus_retention_time: 15d
+prometheus_retention_size: 10GB
+
+# Vaulted values are defined in vault.example.yml and should be copied to vault.yml.
+postgres_superuser_password: "{{ vault_postgres_superuser_password }}"
+postgres_platform_password: "{{ vault_postgres_platform_password }}"
+postgres_organizers_password: "{{ vault_postgres_organizers_password }}"
+postgres_backup_password: "{{ vault_postgres_backup_password }}"
+

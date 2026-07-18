@@ -1,0 +1,4 @@
+.vault-password
+*.retry
+inventories/*/vault.yml
+

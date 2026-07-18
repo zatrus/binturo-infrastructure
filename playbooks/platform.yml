@@ -1,0 +1,9 @@
+---
+- name: Configure Binturo platform services
+  hosts: binturo_hosts
+  become: true
+  roles:
+    - postgres
+    - caddy
+    - monitoring
+

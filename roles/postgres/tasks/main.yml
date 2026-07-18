@@ -1,0 +1,80 @@
+---
+- name: Write PostgreSQL secret files
+  ansible.builtin.copy:
+    content: "{{ item.value }}\n"
+    dest: "{{ binturo_root }}/secrets/{{ item.name }}"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0600"
+  loop:
+    - { name: postgres_superuser_password, value: "{{ postgres_superuser_password }}" }
+    - { name: postgres_platform_password, value: "{{ postgres_platform_password }}" }
+    - { name: postgres_organizers_password, value: "{{ postgres_organizers_password }}" }
+    - { name: postgres_backup_password, value: "{{ postgres_backup_password }}" }
+  no_log: true
+
+- name: Install PostgreSQL bootstrap SQL
+  ansible.builtin.template:
+    src: bootstrap.sql.j2
+    dest: "{{ binturo_root }}/compose/postgres-bootstrap.sql"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0640"
+
+- name: Install PostgreSQL bootstrap script
+  ansible.builtin.template:
+    src: bootstrap.sh.j2
+    dest: "{{ binturo_root }}/compose/postgres-bootstrap.sh"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0750"
+
+- name: Install PostgreSQL Compose definition
+  ansible.builtin.template:
+    src: compose.postgres.yml.j2
+    dest: "{{ binturo_root }}/compose/compose.postgres.yml"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0640"
+
+- name: Start PostgreSQL
+  become: true
+  become_user: "{{ binturo_user }}"
+  community.docker.docker_compose_v2:
+    project_src: "{{ binturo_root }}/compose"
+    files:
+      - compose.postgres.yml
+    project_name: "binturo-{{ environment_name }}"
+    services:
+      - postgres
+    state: present
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+
+- name: Wait until PostgreSQL is healthy
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    cmd: "docker inspect --format={{ '{{' }}.State.Health.Status{{ '}}' }} {{ postgres_container_name }}"
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  register: postgres_health
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: postgres_health.stdout == "healthy"
+
+- name: Reconcile PostgreSQL database, roles and initial schema
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    cmd: >-
+      docker compose
+      --project-name binturo-{{ environment_name }}
+      --file {{ binturo_root }}/compose/compose.postgres.yml
+      run --rm postgres-bootstrap
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
+  changed_when: false
+  no_log: true
+

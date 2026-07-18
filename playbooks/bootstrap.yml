@@ -1,0 +1,10 @@
+---
+- name: Bootstrap Binturo host
+  hosts: binturo_hosts
+  become: true
+  roles:
+    - common
+    - app_user
+    - docker_rootless
+    - directory_layout
+

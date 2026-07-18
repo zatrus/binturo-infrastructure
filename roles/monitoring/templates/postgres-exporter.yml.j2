@@ -1,0 +1,9 @@
+auth_modules:
+  binturo:
+    type: userpass
+    userpass:
+      username: {{ postgres_backup_user }}
+      password: {{ postgres_backup_password | to_json }}
+    options:
+      sslmode: disable
+

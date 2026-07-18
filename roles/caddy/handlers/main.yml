@@ -1,0 +1,13 @@
+---
+- name: Validate Caddy configuration
+  ansible.builtin.command:
+    cmd: caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+  changed_when: false
+  listen: Validate and reload Caddy
+
+- name: Reload Caddy
+  ansible.builtin.systemd:
+    name: caddy
+    state: reloaded
+  listen: Validate and reload Caddy
+

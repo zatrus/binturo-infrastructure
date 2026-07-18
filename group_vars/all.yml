@@ -1,0 +1,40 @@
+---
+binturo_user: binturo
+binturo_group: binturo
+binturo_uid: 1500
+binturo_gid: 1500
+binturo_root: /srv/binturo
+binturo_timezone: Europe/Warsaw
+
+docker_apt_arch: amd64
+docker_rootless_socket: "unix:///run/user/{{ binturo_uid }}/docker.sock"
+
+postgres_image: postgres:17.5-bookworm
+postgres_container_name: binturo-postgres
+postgres_port: 5432
+postgres_superuser: postgres
+postgres_owner_role: binturo_platform_owner
+postgres_platform_user: binturo_platform_app
+postgres_organizers_user: binturo_organizers_app
+postgres_backup_user: binturo_backup
+postgres_initial_schema: binturo_platform
+
+binturo_ports:
+  platform: 18101
+  organizers: 18102
+  frontend_platform: 18201
+  frontend_organizers: 18202
+  prometheus: 19090
+
+caddy_email: admin@example.com
+caddy_dynamic_config_dir: /etc/caddy/sites-enabled
+
+prometheus_image: prom/prometheus:v3.5.0
+node_exporter_image: prom/node-exporter:v1.9.1
+postgres_exporter_image: prometheuscommunity/postgres-exporter:v0.17.1
+
+# Optional remote_write destination. Leave empty to retain metrics locally only.
+prometheus_remote_write_url: ""
+prometheus_remote_write_username: ""
+prometheus_remote_write_password: ""
+

@@ -1,0 +1,73 @@
+---
+- name: Create Docker APT key directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Docker repository signing key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Configure Docker repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch={{ docker_apt_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    filename: docker
+    state: present
+
+- name: Install Docker client, Compose and rootless components
+  ansible.builtin.apt:
+    name:
+      - docker-ce-cli
+      - docker-compose-plugin
+      - docker-ce-rootless-extras
+      - slirp4netns
+    state: present
+    update_cache: true
+
+- name: Check whether rootless Docker user service exists
+  ansible.builtin.stat:
+    path: "/home/{{ binturo_user }}/.config/systemd/user/docker.service"
+  register: rootless_docker_service
+
+- name: Install rootless Docker daemon
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.command:
+    cmd: dockerd-rootless-setuptool.sh install --force
+  environment:
+    HOME: "/home/{{ binturo_user }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
+  when: not rootless_docker_service.stat.exists
+
+- name: Create rootless Docker configuration directory
+  ansible.builtin.file:
+    path: "/home/{{ binturo_user }}/.config/docker"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0700"
+
+- name: Configure rootless Docker daemon
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: "/home/{{ binturo_user }}/.config/docker/daemon.json"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0600"
+  notify: Restart rootless Docker
+
+- name: Enable and start rootless Docker service
+  become: true
+  become_user: "{{ binturo_user }}"
+  ansible.builtin.systemd:
+    name: docker.service
+    scope: user
+    enabled: true
+    state: started
+    daemon_reload: true
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ binturo_uid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ binturo_uid }}/bus"

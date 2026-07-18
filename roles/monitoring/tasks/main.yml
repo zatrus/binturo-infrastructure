@@ -1,0 +1,42 @@
+---
+- name: Install Prometheus configuration
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ binturo_root }}/monitoring/prometheus.yml"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0640"
+  notify: Restart monitoring stack
+
+- name: Install postgres_exporter configuration
+  ansible.builtin.template:
+    src: postgres-exporter.yml.j2
+    dest: "{{ binturo_root }}/secrets/postgres-exporter.yml"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    # The parent secrets directory is 0700. The exporter runs as uid 65534 and
+    # therefore needs the bind-mounted file itself to be readable.
+    mode: "0644"
+  no_log: true
+  notify: Restart monitoring stack
+
+- name: Install monitoring Compose definition
+  ansible.builtin.template:
+    src: compose.monitoring.yml.j2
+    dest: "{{ binturo_root }}/compose/compose.monitoring.yml"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0640"
+  notify: Restart monitoring stack
+
+- name: Start monitoring stack
+  become: true
+  become_user: "{{ binturo_user }}"
+  community.docker.docker_compose_v2:
+    project_src: "{{ binturo_root }}/compose"
+    files:
+      - compose.monitoring.yml
+    project_name: "binturo-monitoring-{{ environment_name }}"
+    state: present
+  environment:
+    DOCKER_HOST: "{{ docker_rootless_socket }}"
