@@ -77,13 +77,21 @@ $secretNames = @(
 )
 
 New-Item -ItemType Directory -Force secrets | Out-Null
-foreach ($secretName in $secretNames) {
-  $bytes = [byte[]]::new(32)
-  [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-  [System.IO.File]::WriteAllText(
-    (Join-Path (Resolve-Path secrets) $secretName),
-    [Convert]::ToBase64String($bytes)
-  )
+try {
+  $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  foreach ($secretName in $secretNames) {
+    $bytes = New-Object byte[] 32
+    $random.GetBytes($bytes)
+    [System.IO.File]::WriteAllText(
+      (Join-Path (Resolve-Path secrets) $secretName),
+      [Convert]::ToBase64String($bytes)
+    )
+  }
+}
+finally {
+  if ($null -ne $random) {
+    $random.Dispose()
+  }
 }
 ```
 

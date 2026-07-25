@@ -3,13 +3,10 @@
 *.retry
 inventories/*/vault.yml
 inventories/*/vault.yaml
-inventories/*/group_vars/vault.yml
-inventories/*/group_vars/vault.yaml
-inventories/*/group_vars/all/vault.yml
-inventories/*/group_vars/all/vault.yaml
 inventories/*/vault.yaml
 .venv
 .vscode/
+.vault-password*
 
 # Semaphore UI local configuration and secrets
 semaphore/.env
