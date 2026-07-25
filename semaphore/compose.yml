@@ -1,0 +1,83 @@
+name: binturo-semaphore
+
+services:
+  postgres:
+    image: postgres:17.5-bookworm
+    restart: unless-stopped
+    init: true
+    environment:
+      POSTGRES_DB: semaphore
+      POSTGRES_USER: semaphore
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      TZ: ${TZ:-Europe/Warsaw}
+    secrets:
+      - postgres_password
+    volumes:
+      - semaphore_postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U semaphore -d semaphore"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  semaphore:
+    image: semaphoreui/semaphore:v2.18.4
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${SEMAPHORE_BIND_ADDRESS:-127.0.0.1}:${SEMAPHORE_PORT:-3000}:3000"
+    environment:
+      SEMAPHORE_DB_DIALECT: postgres
+      SEMAPHORE_DB_HOST: postgres
+      SEMAPHORE_DB_PORT: "5432"
+      SEMAPHORE_DB: semaphore
+      SEMAPHORE_DB_USER: semaphore
+      SEMAPHORE_DB_PASS_FILE: /run/secrets/postgres_password
+      SEMAPHORE_ADMIN: ${SEMAPHORE_ADMIN:-admin}
+      SEMAPHORE_ADMIN_NAME: ${SEMAPHORE_ADMIN_NAME:-Administrator}
+      SEMAPHORE_ADMIN_EMAIL: ${SEMAPHORE_ADMIN_EMAIL:?Set SEMAPHORE_ADMIN_EMAIL in .env}
+      SEMAPHORE_ADMIN_PASSWORD_FILE: /run/secrets/semaphore_admin_password
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION_FILE: /run/secrets/access_key_encryption
+      SEMAPHORE_COOKIE_HASH_FILE: /run/secrets/cookie_hash
+      SEMAPHORE_COOKIE_ENCRYPTION_FILE: /run/secrets/cookie_encryption
+      SEMAPHORE_PLAYBOOK_PATH: /tmp/semaphore
+      SEMAPHORE_LDAP_ACTIVATED: "no"
+      TZ: ${TZ:-Europe/Warsaw}
+    secrets:
+      - postgres_password
+      - semaphore_admin_password
+      - access_key_encryption
+      - cookie_hash
+      - cookie_encryption
+    networks:
+      - frontend
+      - database
+    security_opt:
+      - no-new-privileges:true
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  semaphore_admin_password:
+    file: ./secrets/semaphore_admin_password
+  access_key_encryption:
+    file: ./secrets/access_key_encryption
+  cookie_hash:
+    file: ./secrets/cookie_hash
+  cookie_encryption:
+    file: ./secrets/cookie_encryption
+
+volumes:
+  semaphore_postgres_data:
+
+networks:
+  frontend:
+  database:
+    internal: true

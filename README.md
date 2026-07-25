@@ -9,6 +9,11 @@ dla:
 - dwóch frontendów;
 - plików współdzielonych przez backendy.
 
+Osobna, przenośna konfiguracja panelu Semaphore UI dla Ubuntu i Windows znajduje
+się w [semaphore/README.md](semaphore/README.md). Panel korzysta z własnego
+PostgreSQL i nie jest instalowany na hostach aplikacyjnych przez playbooki tego
+projektu.
+
 Projekt konfiguruje środowisko hosta. Nie implementuje procedury wdrażania aplikacji
 ani GitHub Actions. Środowiska `dev` i `prod` znajdują się na różnych hostach i
 korzystają z osobnych inventory oraz sekretów.

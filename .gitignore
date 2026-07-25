@@ -10,3 +10,10 @@ inventories/*/group_vars/all/vault.yaml
 inventories/*/vault.yaml
 .venv
 .vscode/
+
+# Semaphore UI local configuration and secrets
+semaphore/.env
+semaphore/secrets/*
+!semaphore/secrets/.gitkeep
+semaphore/backups/*
+!semaphore/backups/.gitkeep
