@@ -1,4 +1,6 @@
 .vault-password
+vars/jenkins-local.yml
+vars/jenkins-local-vault.yml
 .venv/
 *.retry
 inventories/*/vault.yml

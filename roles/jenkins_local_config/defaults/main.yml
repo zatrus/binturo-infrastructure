@@ -1,0 +1,12 @@
+---
+jenkins_source_root: /mnt/d/projects/reservations/jenkins
+jenkins_local_overwrite_existing: false
+
+jenkins_local_environment_names:
+  - local
+  - staging
+  - production
+
+jenkins_local_application_names:
+  - organizers
+  - platform

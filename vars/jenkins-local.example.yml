@@ -1,0 +1,68 @@
+---
+# Copy to vars/jenkins-local.yml and replace every CHANGE_ME value.
+# Ansible runs in WSL, therefore the destination uses a /mnt/d path.
+jenkins_source_root: /mnt/d/projects/reservations/jenkins
+jenkins_local_overwrite_existing: false
+
+jenkins_repository_url: https://github.com/CHANGE_ME/reservations.git
+jenkins_admin_user: admin
+jenkins_url: http://localhost:8080/
+
+# Jenkins calls the Ansible dev environment "local".
+jenkins_environments:
+  local:
+    ssh_host: 10.0.0.110
+    ssh_port: 2918
+    ssh_user: binturo_dev
+    ssh_sudo_user: binturo
+    database_name: binturo_dev_warszawa
+    organizers_domain: organizers.binturo.warszawa
+    platform_domain: platform.binturo.warszawa
+    organizers_backend_dir: /srv/binturo/apps/binturo-organizers
+    organizers_frontend_dir: /srv/binturo/apps/frontend-organizers
+    organizers_venv_dir: /srv/binturo/apps/binturo-organizers/venv
+    platform_backend_dir: /srv/binturo/apps/binturo-platform
+    platform_frontend_dir: /srv/binturo/apps/frontend-platform
+    platform_venv_dir: /srv/binturo/apps/binturo-platform/venv
+
+  staging:
+    ssh_host: CHANGE_ME_STAGING_HOST
+    ssh_port: 22
+    ssh_user: CHANGE_ME_STAGING_SSH_USER
+    ssh_sudo_user: binturo
+    database_name: binturo_staging
+    organizers_domain: CHANGE_ME_STAGING_ORGANIZERS_DOMAIN
+    platform_domain: CHANGE_ME_STAGING_PLATFORM_DOMAIN
+    organizers_backend_dir: /srv/binturo/apps/binturo-organizers
+    organizers_frontend_dir: /srv/binturo/apps/frontend-organizers
+    organizers_venv_dir: /srv/binturo/apps/binturo-organizers/venv
+    platform_backend_dir: /srv/binturo/apps/binturo-platform
+    platform_frontend_dir: /srv/binturo/apps/frontend-platform
+    platform_venv_dir: /srv/binturo/apps/binturo-platform/venv
+
+  production:
+    ssh_host: 51.68.151.77
+    ssh_port: 2416
+    ssh_user: binturo_p
+    ssh_sudo_user: binturo
+    database_name: binturo_prod
+    organizers_domain: app.binturo.com
+    platform_domain: platform.binturo.com
+    organizers_backend_dir: /srv/binturo/apps/binturo-organizers
+    organizers_frontend_dir: /srv/binturo/apps/frontend-organizers
+    organizers_venv_dir: /srv/binturo/apps/binturo-organizers/venv
+    platform_backend_dir: /srv/binturo/apps/binturo-platform
+    platform_frontend_dir: /srv/binturo/apps/frontend-platform
+    platform_venv_dir: /srv/binturo/apps/binturo-platform/venv
+
+jenkins_database:
+  host: 127.0.0.1
+  port: 5432
+  organizers_user: binturo_organizers_app
+  platform_user: binturo_platform_app
+  organizers_schema: binturo
+  platform_schema: binturo_platform
+
+jenkins_backend_ports:
+  organizers: 18102
+  platform: 18101

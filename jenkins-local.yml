@@ -1,0 +1,39 @@
+---
+- name: Prepare local Jenkins configuration files
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  pre_tasks:
+    - name: Load public Jenkins configuration
+      ansible.builtin.include_vars:
+        file: >-
+          {{
+            lookup(
+              'ansible.builtin.first_found',
+              {
+                'files': ['jenkins-local.yml', 'jenkins-local.example.yml'],
+                'paths': [playbook_dir ~ '/vars']
+              }
+            )
+          }}
+
+    - name: Load vaulted Jenkins configuration
+      ansible.builtin.include_vars:
+        file: >-
+          {{
+            lookup(
+              'ansible.builtin.first_found',
+              {
+                'files': [
+                  'jenkins-local-vault.yml',
+                  'jenkins-local-vault.example.yml'
+                ],
+                'paths': [playbook_dir ~ '/vars']
+              }
+            )
+          }}
+      no_log: true
+
+  roles:
+    - jenkins_local_config

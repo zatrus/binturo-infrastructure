@@ -1,0 +1,138 @@
+---
+- name: Inspect required Jenkins source paths
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ jenkins_source_root }}"
+    - "{{ jenkins_source_root }}/casc/jenkins.yaml"
+    - "{{ jenkins_source_root }}/local/run-jenkins.ps1"
+  register: jenkins_required_paths
+
+- name: Require the existing Jenkins source directory
+  ansible.builtin.assert:
+    that:
+      - jenkins_required_paths.results[0].stat.isdir | default(false)
+      - jenkins_required_paths.results[1].stat.isreg | default(false)
+      - jenkins_required_paths.results[2].stat.isreg | default(false)
+    fail_msg: >-
+      jenkins_source_root must point to the existing reservations/jenkins
+      directory. This role does not modify JCasC, Jenkinsfile or .example files.
+
+- name: Validate public Jenkins configuration
+  ansible.builtin.assert:
+    that:
+      - jenkins_repository_url is defined
+      - "'CHANGE_ME' not in jenkins_repository_url"
+      - jenkins_admin_user | default('') | length > 0
+      - jenkins_url | default('') | length > 0
+      - jenkins_environments.keys() | sort == jenkins_local_environment_names | sort
+      - jenkins_database.organizers_user | length > 0
+      - jenkins_database.platform_user | length > 0
+    fail_msg: "Complete vars/jenkins-local.yml before running this playbook."
+
+- name: Validate every Jenkins environment
+  ansible.builtin.assert:
+    that:
+      - item.value.ssh_host | string | length > 0
+      - "'CHANGE_ME' not in (item.value | string)"
+      - item.value.ssh_port | int > 0
+      - item.value.ssh_user | length > 0
+      - item.value.ssh_sudo_user | length > 0
+      - item.value.database_name | length > 0
+      - item.value.organizers_domain | length > 0
+      - item.value.platform_domain | length > 0
+      - item.value.organizers_backend_dir | length > 0
+      - item.value.organizers_frontend_dir | length > 0
+      - item.value.organizers_venv_dir | length > 0
+      - item.value.platform_backend_dir | length > 0
+      - item.value.platform_frontend_dir | length > 0
+      - item.value.platform_venv_dir | length > 0
+    fail_msg: "Complete the public configuration for {{ item.key }}."
+  loop: "{{ jenkins_environments | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Validate vaulted Jenkins secrets
+  ansible.builtin.assert:
+    that:
+      - vault_jenkins_admin_password | default('') | length >= 12
+      - "'CHANGE_ME' not in vault_jenkins_admin_password"
+      - vault_jenkins_environments.keys() | sort == jenkins_local_environment_names | sort
+      - item.value.organizers_db_password | length > 0
+      - item.value.platform_db_password | length > 0
+      - item.value.organizers_jwt_secret | length >= 32
+      - item.value.platform_jwt_secret | length >= 32
+      - item.value.organizers_jwt_secret != item.value.platform_jwt_secret
+      - "'CHANGE_ME' not in (item.value | string)"
+      - "'BEGIN OPENSSH PRIVATE KEY' in item.value.organizers_ssh_private_key"
+      - "'BEGIN OPENSSH PRIVATE KEY' in item.value.platform_ssh_private_key"
+    fail_msg: "Complete and encrypt the Jenkins Vault values for {{ item.key }}."
+  loop: "{{ vault_jenkins_environments | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  no_log: true
+
+- name: Create Jenkins runtime configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ jenkins_source_root }}/secrets"
+    - "{{ jenkins_source_root }}/secrets/keys"
+    - "{{ jenkins_source_root }}/config/organizers"
+    - "{{ jenkins_source_root }}/config/platform"
+
+- name: Generate Jenkins secrets properties
+  ansible.builtin.template:
+    src: secrets.properties.j2
+    dest: "{{ jenkins_source_root }}/secrets/secrets.properties"
+    force: "{{ jenkins_local_overwrite_existing | bool }}"
+  no_log: true
+
+- name: Generate Jenkins SSH private key files
+  ansible.builtin.template:
+    src: ssh-private-key.j2
+    dest: >-
+      {{ jenkins_source_root }}/secrets/keys/{{
+        item.0 | upper }}_{{ item.1 | upper }}_SSH_KEY
+    force: "{{ jenkins_local_overwrite_existing | bool }}"
+  vars:
+    jenkins_key_application: "{{ item.0 }}"
+    jenkins_key_environment: "{{ item.1 }}"
+  loop: >-
+    {{
+      jenkins_local_application_names
+      | product(jenkins_local_environment_names)
+      | list
+    }}
+  loop_control:
+    label: "{{ item.0 }} / {{ item.1 }}"
+  no_log: true
+
+- name: Generate Jenkins environment configuration files
+  ansible.builtin.template:
+    src: environment.env.j2
+    dest: "{{ jenkins_source_root }}/config/{{ item.0 }}/{{ item.1 }}.env"
+    force: "{{ jenkins_local_overwrite_existing | bool }}"
+  vars:
+    jenkins_config_application: "{{ item.0 }}"
+    jenkins_config_environment: "{{ item.1 }}"
+    jenkins_config: "{{ jenkins_environments[item.1] }}"
+  loop: >-
+    {{
+      jenkins_local_application_names
+      | product(jenkins_local_environment_names)
+      | list
+    }}
+  loop_control:
+    label: "{{ item.0 }} / {{ item.1 }}"
+
+- name: Report generated Jenkins configuration
+  ansible.builtin.debug:
+    msg:
+      - "Jenkins configuration prepared under {{ jenkins_source_root }}."
+      - >-
+        Existing files were {{
+          'updated' if jenkins_local_overwrite_existing | bool else 'preserved'
+        }}.
+      - "Review generated files, then run jenkins/local/run-jenkins.ps1."
