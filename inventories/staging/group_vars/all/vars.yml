@@ -3,7 +3,9 @@ environment_name: prod
 
 binturo_domains:
   platform: platform.example.com
-  organizers: organizers.example.com
+  organizers_staff: staff.example.com
+  organizers_trainer: trainer.example.com
+  organizers_client: app.example.com
 
 postgres_database: binturo_prod
 postgres_data_path: "{{ binturo_root }}/persistent/postgres"

@@ -16,7 +16,9 @@ jenkins_environments:
     ssh_user: binturo_dev
     ssh_sudo_user: binturo
     database_name: binturo_dev_warszawa
-    organizers_domain: organizers.binturo.warszawa
+    organizers_staff_domain: staff.binturo.warszawa
+    organizers_trainer_domain: trainer.binturo.warszawa
+    organizers_client_domain: client.binturo.warszawa
     platform_domain: platform.binturo.warszawa
     organizers_backend_dir: /srv/binturo/apps/backend-organizers
     organizers_staff_frontend_dir: /srv/binturo/apps/frontend-organizers/staff
@@ -33,7 +35,9 @@ jenkins_environments:
     ssh_user: CHANGE_ME_STAGING_SSH_USER
     ssh_sudo_user: binturo
     database_name: binturo_staging
-    organizers_domain: CHANGE_ME_STAGING_ORGANIZERS_DOMAIN
+    organizers_staff_domain: CHANGE_ME_STAGING_STAFF_DOMAIN
+    organizers_trainer_domain: CHANGE_ME_STAGING_TRAINER_DOMAIN
+    organizers_client_domain: CHANGE_ME_STAGING_CLIENT_DOMAIN
     platform_domain: CHANGE_ME_STAGING_PLATFORM_DOMAIN
     organizers_backend_dir: /srv/binturo/apps/backend-organizers
     organizers_staff_frontend_dir: /srv/binturo/apps/frontend-organizers/staff
@@ -50,7 +54,9 @@ jenkins_environments:
     ssh_user: binturo_p
     ssh_sudo_user: binturo
     database_name: binturo_prod
-    organizers_domain: app.binturo.com
+    organizers_staff_domain: staff.binturo.com
+    organizers_trainer_domain: trainer.binturo.com
+    organizers_client_domain: app.binturo.com
     platform_domain: platform.binturo.com
     organizers_backend_dir: /srv/binturo/apps/backend-organizers
     organizers_staff_frontend_dir: /srv/binturo/apps/frontend-organizers/staff
@@ -68,12 +74,8 @@ jenkins_database:
   platform_user: binturo_platform_app
   organizers_schema: binturo
   platform_schema: binturo_platform
+  users_schema: binturo_users
 
 jenkins_backend_ports:
   organizers: 18102
   platform: 18101
-
-jenkins_frontend_ports:
-  organizers_staff: 18201
-  organizers_trainer: 18202
-  organizers_client: 18203

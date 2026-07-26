@@ -294,7 +294,8 @@ korzysta z TLS-ALPN-01 na porcie 443. HTTP/3 jest wyłączone, aby nie otwierać
 [docs/caddy-dynamic-config.md](docs/caddy-dynamic-config.md).
 
 Logi dostępu Caddy mają format JSON i trafiają osobno do
-`/var/log/caddy/platform.log` oraz `/var/log/caddy/organizers.log`. Caddy obraca je
+`/var/log/caddy/platform.log` oraz osobnych logów `organizers-staff.log`,
+`organizers-trainer.log` i `organizers-client.log`. Caddy obraca je
 codziennie o północy czasu lokalnego i zachowuje do 31 plików nie starszych niż
 31 dni. Logi operacyjne usługi pozostają w `journald`.
 

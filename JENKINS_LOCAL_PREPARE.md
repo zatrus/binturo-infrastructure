@@ -24,6 +24,18 @@ obecne inventory zawiera placeholdery. Domyślna ścieżka docelowa to:
 jenkins_source_root: /mnt/d/projects/reservations/jenkins
 ```
 
+Dla każdego środowiska skonfiguruj osobne domeny frontendów organizers:
+`organizers_staff_domain`, `organizers_trainer_domain` i
+`organizers_client_domain`. Playbook generuje zgodne z JCasC zmienne
+`BINTURO_STAFF_APP_URL`, `BINTURO_TRAINER_APP_URL` oraz
+`BINTURO_CLIENT_APP_URL`. Generuje również trzy docelowe katalogi
+`STAFF_FRONTEND_DIR`, `TRAINER_FRONTEND_DIR` i `CLIENT_FRONTEND_DIR` oraz wspólny
+schemat użytkowników `BINTURO_USERS_SCHEMA`.
+
+Porty `binturo_frontend_ports` należą do konfiguracji Caddy na hostach i nie są
+przekazywane do Jenkinsa. Pipeline wdraża statyczne buildy frontendów przez
+`rsync`; nie uruchamia dla nich osobnych procesów.
+
 Uzupełnij sekrety i prywatne klucze w `vars/jenkins-local-vault.yml`, a następnie
 zaszyfruj plik:
 

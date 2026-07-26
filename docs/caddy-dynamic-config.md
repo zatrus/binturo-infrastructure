@@ -2,14 +2,18 @@
 
 Pliki witryn znajdują się w `/etc/caddy/sites-enabled`. Główny `Caddyfile` importuje
 wszystkie pliki z tego katalogu. Ansible zarządza plikami `10-platform.caddy` i
-`20-organizers.caddy`; inne procesy mogą dodawać osobne pliki o innych nazwach.
+`20-organizers-staff.caddy`, `21-organizers-trainer.caddy` i
+`22-organizers-client.caddy`; inne procesy mogą dodawać osobne pliki o innych
+nazwach.
 
 Każda publiczna witryna musi importować snippet `binturo_common`. Zapewnia on
 wspólne limity, nagłówki bezpieczeństwa oraz blokadę typowych plików wrażliwych.
 Logowanie dostępu jest konfigurowane osobno dla każdej witryny:
 
 - platforma: `/var/log/caddy/platform.log`;
-- organizatorzy: `/var/log/caddy/organizers.log`.
+- organizers staff: `/var/log/caddy/organizers-staff.log`;
+- organizers trainer: `/var/log/caddy/organizers-trainer.log`;
+- organizers client: `/var/log/caddy/organizers-client.log`.
 
 Logi mają format JSON i są rotowane przez Caddy codziennie o północy czasu
 lokalnego. Rotacja zachowuje maksymalnie 31 plików nie starszych niż 31 dni.
@@ -42,10 +46,11 @@ platform.example.com {
 }
 ```
 
-Konfiguracja `binturo-organizers` działa analogicznie:
+Każdy frontend `binturo-organizers` ma własną domenę. Przykład dla aplikacji
+client:
 
 ```caddyfile
-organizers.example.com {
+app.example.com {
     import binturo_common
 
     @backend_api path /api /api/*

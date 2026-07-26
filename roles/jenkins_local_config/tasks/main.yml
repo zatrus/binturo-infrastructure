@@ -28,6 +28,14 @@
       - jenkins_environments.keys() | sort == jenkins_local_environment_names | sort
       - jenkins_database.organizers_user | length > 0
       - jenkins_database.platform_user | length > 0
+      - jenkins_database.organizers_schema | length > 0
+      - jenkins_database.platform_schema | length > 0
+      - jenkins_database.users_schema | length > 0
+      - jenkins_backend_ports.organizers | int > 0
+      - jenkins_backend_ports.organizers | int < 65536
+      - jenkins_backend_ports.platform | int > 0
+      - jenkins_backend_ports.platform | int < 65536
+      - (jenkins_backend_ports.organizers | int) != (jenkins_backend_ports.platform | int)
     fail_msg: "Complete vars/jenkins-local.yml before running this playbook."
 
 - name: Validate every Jenkins environment
@@ -39,7 +47,9 @@
       - item.value.ssh_user | length > 0
       - item.value.ssh_sudo_user | length > 0
       - item.value.database_name | length > 0
-      - item.value.organizers_domain | length > 0
+      - item.value.organizers_staff_domain | length > 0
+      - item.value.organizers_trainer_domain | length > 0
+      - item.value.organizers_client_domain | length > 0
       - item.value.platform_domain | length > 0
       - item.value.organizers_backend_dir | length > 0
       - item.value.organizers_staff_frontend_dir | length > 0
@@ -49,10 +59,6 @@
       - item.value.platform_backend_dir | length > 0
       - item.value.platform_frontend_dir | length > 0
       - item.value.platform_venv_dir | length > 0
-      - jenkins_frontend_ports.organizers_staff | int > 0
-      - jenkins_frontend_ports.organizers_trainer | int > 0
-      - jenkins_frontend_ports.organizers_client | int > 0
-      - jenkins_frontend_ports.values() | list | unique | length == 3
     fail_msg: "Complete the public configuration for {{ item.key }}."
   loop: "{{ jenkins_environments | dict2items }}"
   loop_control:

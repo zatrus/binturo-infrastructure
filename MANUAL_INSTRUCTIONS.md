@@ -296,7 +296,9 @@ Formatowanie pliku dynamicznego:
 sudo caddy fmt --overwrite /etc/caddy/sites-enabled/nazwa.caddy
 ```
 
-Pliki `10-platform.caddy` i `20-organizers.caddy` są zarządzane przez Ansible i nie
+Pliki `10-platform.caddy`, `20-organizers-staff.caddy`,
+`21-organizers-trainer.caddy` i `22-organizers-client.caddy` są zarządzane przez
+Ansible i nie
 powinny być edytowane ręcznie. Dodatkowe pliki dynamiczne muszą mieć inne nazwy.
 
 Frontendy są statycznymi buildami npm i nie mają osobnych usług systemd. Caddy
@@ -329,7 +331,9 @@ czasu lokalnego. Ansible zachowuje maksymalnie 31 plików nie starszych niż 31 
 
 ```bash
 sudo tail -f /var/log/caddy/platform.log
-sudo tail -f /var/log/caddy/organizers.log
+sudo tail -f /var/log/caddy/organizers-staff.log
+sudo tail -f /var/log/caddy/organizers-trainer.log
+sudo tail -f /var/log/caddy/organizers-client.log
 sudo ls -lah /var/log/caddy
 ```
 

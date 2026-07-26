@@ -8,7 +8,9 @@ environment_name: dev
 
 binturo_domains:
   platform: platform.binturo.warszawa
-  organizers: organizers.binturo.warszawa
+  organizers_staff: staff.binturo.warszawa
+  organizers_trainer: trainer.binturo.warszawa
+  organizers_client: client.binturo.warszawa
 
 # The .warszawa development names are not eligible for public ACME certificates.
 caddy_tls_internal: true
