@@ -53,7 +53,7 @@ organizers.example.com {
         reverse_proxy 127.0.0.1:18102
     }
     handle {
-        root * /srv/binturo/apps/frontend-organizers
+        root * /srv/binturo/apps/frontend-organizers/client
         try_files {path} /index.html
         file_server
     }
@@ -63,7 +63,10 @@ organizers.example.com {
 Prefiks `/api` nie jest usuwany. Backend musi więc obsługiwać ścieżki zaczynające się
 od `/api` i nasłuchiwać wyłącznie na `127.0.0.1`. Frontendy nie uruchamiają osobnych
 serwerów: proces budowania npm zapisuje gotowe pliki w katalogach wskazanych przez
-`binturo_frontend_roots`, a Caddy odczytuje je bezpośrednio. `try_files` zapewnia
+`binturo_frontend_roots`, a Caddy odczytuje je bezpośrednio. Frontendy organizers
+`staff`, `trainer` i `client` są ponadto dostępne lokalnie odpowiednio na portach
+`18201`, `18202` i `18203`; porty są konfigurowane przez `binturo_frontend_ports`
+i nasłuchują wyłącznie na `127.0.0.1`. `try_files` zapewnia
 fallback do `index.html` dla routingu po stronie Reacta.
 
 Na produkcji matcher `remote_ip` rozpoznaje oficjalne zakresy IPv4 i IPv6

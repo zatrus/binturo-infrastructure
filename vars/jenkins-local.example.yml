@@ -18,12 +18,14 @@ jenkins_environments:
     database_name: binturo_dev_warszawa
     organizers_domain: organizers.binturo.warszawa
     platform_domain: platform.binturo.warszawa
-    organizers_backend_dir: /srv/binturo/apps/binturo-organizers
-    organizers_frontend_dir: /srv/binturo/apps/frontend-organizers
-    organizers_venv_dir: /srv/binturo/apps/binturo-organizers/venv
-    platform_backend_dir: /srv/binturo/apps/binturo-platform
+    organizers_backend_dir: /srv/binturo/apps/backend-organizers
+    organizers_staff_frontend_dir: /srv/binturo/apps/frontend-organizers/staff
+    organizers_trainer_frontend_dir: /srv/binturo/apps/frontend-organizers/trainer
+    organizers_client_frontend_dir: /srv/binturo/apps/frontend-organizers/client
+    organizers_venv_dir: /srv/binturo/apps/backend-organizers/venv
+    platform_backend_dir: /srv/binturo/apps/backend-platform
     platform_frontend_dir: /srv/binturo/apps/frontend-platform
-    platform_venv_dir: /srv/binturo/apps/binturo-platform/venv
+    platform_venv_dir: /srv/binturo/apps/backend-platform/venv
 
   staging:
     ssh_host: CHANGE_ME_STAGING_HOST
@@ -33,12 +35,14 @@ jenkins_environments:
     database_name: binturo_staging
     organizers_domain: CHANGE_ME_STAGING_ORGANIZERS_DOMAIN
     platform_domain: CHANGE_ME_STAGING_PLATFORM_DOMAIN
-    organizers_backend_dir: /srv/binturo/apps/binturo-organizers
-    organizers_frontend_dir: /srv/binturo/apps/frontend-organizers
-    organizers_venv_dir: /srv/binturo/apps/binturo-organizers/venv
-    platform_backend_dir: /srv/binturo/apps/binturo-platform
+    organizers_backend_dir: /srv/binturo/apps/backend-organizers
+    organizers_staff_frontend_dir: /srv/binturo/apps/frontend-organizers/staff
+    organizers_trainer_frontend_dir: /srv/binturo/apps/frontend-organizers/trainer
+    organizers_client_frontend_dir: /srv/binturo/apps/frontend-organizers/client
+    organizers_venv_dir: /srv/binturo/apps/backend-organizers/venv
+    platform_backend_dir: /srv/binturo/apps/backend-platform
     platform_frontend_dir: /srv/binturo/apps/frontend-platform
-    platform_venv_dir: /srv/binturo/apps/binturo-platform/venv
+    platform_venv_dir: /srv/binturo/apps/backend-platform/venv
 
   production:
     ssh_host: 51.68.151.77
@@ -48,12 +52,14 @@ jenkins_environments:
     database_name: binturo_prod
     organizers_domain: app.binturo.com
     platform_domain: platform.binturo.com
-    organizers_backend_dir: /srv/binturo/apps/binturo-organizers
-    organizers_frontend_dir: /srv/binturo/apps/frontend-organizers
-    organizers_venv_dir: /srv/binturo/apps/binturo-organizers/venv
-    platform_backend_dir: /srv/binturo/apps/binturo-platform
+    organizers_backend_dir: /srv/binturo/apps/backend-organizers
+    organizers_staff_frontend_dir: /srv/binturo/apps/frontend-organizers/staff
+    organizers_trainer_frontend_dir: /srv/binturo/apps/frontend-organizers/trainer
+    organizers_client_frontend_dir: /srv/binturo/apps/frontend-organizers/client
+    organizers_venv_dir: /srv/binturo/apps/backend-organizers/venv
+    platform_backend_dir: /srv/binturo/apps/backend-platform
     platform_frontend_dir: /srv/binturo/apps/frontend-platform
-    platform_venv_dir: /srv/binturo/apps/binturo-platform/venv
+    platform_venv_dir: /srv/binturo/apps/backend-platform/venv
 
 jenkins_database:
   host: 127.0.0.1
@@ -66,3 +72,8 @@ jenkins_database:
 jenkins_backend_ports:
   organizers: 18102
   platform: 18101
+
+jenkins_frontend_ports:
+  organizers_staff: 18201
+  organizers_trainer: 18202
+  organizers_client: 18203

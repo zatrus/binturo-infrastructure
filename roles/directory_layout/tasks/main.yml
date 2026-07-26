@@ -10,10 +10,13 @@
     - { path: "{{ binturo_root }}" }
     - { path: "{{ binturo_root }}/compose" }
     - { path: "{{ binturo_root }}/secrets", mode: "0700" }
-    - { path: "{{ binturo_root }}/apps/binturo-platform" }
-    - { path: "{{ binturo_root }}/apps/binturo-organizers" }
+    - { path: "{{ binturo_root }}/apps/backend-platform" }
+    - { path: "{{ binturo_root }}/apps/backend-organizers" }
     - { path: "{{ binturo_root }}/apps/frontend-platform" }
     - { path: "{{ binturo_root }}/apps/frontend-organizers" }
+    - { path: "{{ binturo_root }}/apps/frontend-organizers/staff" }
+    - { path: "{{ binturo_root }}/apps/frontend-organizers/trainer" }
+    - { path: "{{ binturo_root }}/apps/frontend-organizers/client" }
     - { path: "{{ binturo_root }}/shared/binturo-organizers-files", mode: "0770" }
     - { path: "{{ binturo_root }}/persistent/prometheus" }
     - { path: "{{ binturo_root }}/monitoring" }

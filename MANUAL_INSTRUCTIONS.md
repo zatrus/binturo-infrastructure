@@ -60,9 +60,9 @@ Backendy są obsługiwane przez systemowe jednostki działające jako użytkowni
 `binturo`:
 
 - `binturo-platform.service` wywołuje
-  `/srv/binturo/apps/binturo-platform/binturo_platform.sh`;
+  `/srv/binturo/apps/backend-platform/binturo_platform.sh`;
 - `binturo-organizers.service` wywołuje
-  `/srv/binturo/apps/binturo-organizers/binturo_organizers.sh`.
+  `/srv/binturo/apps/backend-organizers/binturo_organizers.sh`.
 
 Jednostki są włączone podczas startu hosta, czekają na rootless Docker i zdrowy
 PostgreSQL, a następnie wykonują skrypt z argumentem `start`. Podczas zatrzymania
@@ -88,8 +88,8 @@ sudo journalctl -u binturo-platform.service -u binturo-organizers.service -f
 Ręczne sprawdzenie interfejsu skryptów:
 
 ```bash
-sudo -u binturo /srv/binturo/apps/binturo-platform/binturo_platform.sh status
-sudo -u binturo /srv/binturo/apps/binturo-organizers/binturo_organizers.sh status
+sudo -u binturo /srv/binturo/apps/backend-platform/binturo_platform.sh status
+sudo -u binturo /srv/binturo/apps/backend-organizers/binturo_organizers.sh status
 ```
 
 Ansible tworzy początkowe skrypty tylko wtedy, gdy pliki nie istnieją. Kolejne
@@ -103,15 +103,15 @@ proces pozostający na pierwszym planie przekroczy timeout jednostki `oneshot`.
 Ansible tworzy środowiska w następujących lokalizacjach:
 
 ```text
-/srv/binturo/apps/binturo-organizers/venv
+/srv/binturo/apps/backend-organizers/venv
 /srv/binturo/apps/frontend-platform/venv
 ```
 
 Kontrola interpretera i zainstalowanych pakietów:
 
 ```bash
-sudo -u binturo /srv/binturo/apps/binturo-organizers/venv/bin/python --version
-sudo -u binturo /srv/binturo/apps/binturo-organizers/venv/bin/pip list
+sudo -u binturo /srv/binturo/apps/backend-organizers/venv/bin/python --version
+sudo -u binturo /srv/binturo/apps/backend-organizers/venv/bin/pip list
 sudo -u binturo /srv/binturo/apps/frontend-platform/venv/bin/python --version
 ```
 
@@ -127,7 +127,7 @@ udostępnia gotowego koła dla używanej wersji Pythona. Diagnostyka:
 ```bash
 gcc --version
 pg_config --version
-/srv/binturo/apps/binturo-platform/venv/bin/python --version
+/srv/binturo/apps/backend-platform/venv/bin/python --version
 ```
 
 ## PostgreSQL
@@ -299,19 +299,29 @@ sudo caddy fmt --overwrite /etc/caddy/sites-enabled/nazwa.caddy
 Pliki `10-platform.caddy` i `20-organizers.caddy` są zarządzane przez Ansible i nie
 powinny być edytowane ręcznie. Dodatkowe pliki dynamiczne muszą mieć inne nazwy.
 
-Frontendy są statycznymi buildami npm i nie mają osobnych usług ani portów. Caddy
+Frontendy są statycznymi buildami npm i nie mają osobnych usług systemd. Caddy
+udostępnia frontend platform przez jego domenę, a frontendy organizers dodatkowo
+na osobnych portach loopback: `staff` 18201, `trainer` 18202 i `client` 18203. Caddy
 serwuje je domyślnie z:
 
 ```text
 /srv/binturo/apps/frontend-platform
-/srv/binturo/apps/frontend-organizers
+/srv/binturo/apps/frontend-organizers/staff
+/srv/binturo/apps/frontend-organizers/trainer
+/srv/binturo/apps/frontend-organizers/client
 ```
 
 Kontrola plików i uprawnień:
 
 ```bash
 sudo -u caddy test -r /srv/binturo/apps/frontend-platform/index.html
-sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/index.html
+sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/staff/index.html
+sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/trainer/index.html
+sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/client/index.html
+
+curl --fail http://127.0.0.1:18201/
+curl --fail http://127.0.0.1:18202/
+curl --fail http://127.0.0.1:18203/
 ```
 
 Logi dostępu są zapisywane osobno w formacie JSON i rotowane codziennie o północy

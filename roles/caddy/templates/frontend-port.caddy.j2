@@ -1,0 +1,6 @@
+# Managed by Ansible. Local changes will be overwritten.
+http://127.0.0.1:{{ item.port }} {
+    root * {{ item.frontend_root }}
+    try_files {path} /index.html
+    file_server
+}

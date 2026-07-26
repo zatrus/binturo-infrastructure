@@ -139,11 +139,31 @@
     - filename: 20-organizers.caddy
       domain: "{{ binturo_domains.organizers }}"
       backend_port: "{{ binturo_ports.organizers }}"
-      frontend_root: "{{ binturo_frontend_roots.organizers }}"
+      frontend_root: "{{ binturo_frontend_roots.organizers_client }}"
       log_filename: organizers.log
   notify:
     - Validate and reload Caddy
     - Restart Caddy after access log configuration change
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Install organizers frontend loopback sites
+  ansible.builtin.template:
+    src: frontend-port.caddy.j2
+    dest: "{{ caddy_dynamic_config_dir }}/{{ item.filename }}"
+    owner: root
+    group: caddy
+    mode: "0640"
+  loop:
+    - filename: 21-organizers-staff.caddy
+      port: "{{ binturo_frontend_ports.organizers_staff }}"
+      frontend_root: "{{ binturo_frontend_roots.organizers_staff }}"
+    - filename: 22-organizers-trainer.caddy
+      port: "{{ binturo_frontend_ports.organizers_trainer }}"
+      frontend_root: "{{ binturo_frontend_roots.organizers_trainer }}"
+    - filename: 23-organizers-client.caddy
+      port: "{{ binturo_frontend_ports.organizers_client }}"
+      frontend_root: "{{ binturo_frontend_roots.organizers_client }}"
+  notify: Validate and reload Caddy
   when: not ansible_check_mode or binturo_caddy_available
 
 - name: Ensure Caddy is enabled and running

@@ -22,8 +22,8 @@ binturo_root: /srv/binturo
 binturo_timezone: Europe/Warsaw
 binturo_venv_python_executable: python3
 binturo_venv_directories:
-  - "{{ binturo_root }}/apps/binturo-organizers"
-  - "{{ binturo_root }}/apps/binturo-platform"
+  - "{{ binturo_root }}/apps/backend-organizers"
+  - "{{ binturo_root }}/apps/backend-platform"
 
 docker_apt_arch: amd64
 docker_rootless_socket: "unix:///run/user/{{ binturo_uid }}/docker.sock"
@@ -46,9 +46,16 @@ binturo_ports:
   organizers: 18102
   prometheus: 19090
 
+binturo_frontend_ports:
+  organizers_staff: 18201
+  organizers_trainer: 18202
+  organizers_client: 18203
+
 binturo_frontend_roots:
   platform: "{{ binturo_root }}/apps/frontend-platform"
-  organizers: "{{ binturo_root }}/apps/frontend-organizers"
+  organizers_staff: "{{ binturo_root }}/apps/frontend-organizers/staff"
+  organizers_trainer: "{{ binturo_root }}/apps/frontend-organizers/trainer"
+  organizers_client: "{{ binturo_root }}/apps/frontend-organizers/client"
 
 caddy_email: admin@example.com
 caddy_dynamic_config_dir: /etc/caddy/sites-enabled
