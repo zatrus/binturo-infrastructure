@@ -6,7 +6,7 @@ jenkins_local_overwrite_existing: false
 
 jenkins_repository_url: https://github.com/CHANGE_ME/reservations.git
 jenkins_admin_user: admin
-jenkins_url: http://localhost:8080/
+jenkins_url: http://localhost:9100/
 
 # Jenkins calls the Ansible dev environment "local".
 jenkins_environments:

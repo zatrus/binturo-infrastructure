@@ -14,8 +14,14 @@ W WSL, w katalogu projektu `reservation-stack`:
 
 ```bash
 cp vars/jenkins-local.example.yml vars/jenkins-local.yml
-cp vars/jenkins-local-vault.example.yml vars/jenkins-local-vault.yml
+cp vars/jenkins-local-vault.local.example.yml vars/jenkins-local-vault.local.yml
+cp vars/jenkins-local-vault.staging.example.yml vars/jenkins-local-vault.staging.yml
+cp vars/jenkins-local-vault.production.example.yml vars/jenkins-local-vault.production.yml
 ```
+
+Stary `vars/jenkins-local-vault.yml` nie jest już wczytywany przez playbook.
+Pozostaje na liście `.gitignore` wyłącznie po to, aby podczas migracji nie doszło
+do przypadkowego dodania istniejącego pliku z sekretami do repozytorium.
 
 Uzupełnij `vars/jenkins-local.yml`. Szczególnie uzupełnij staging, ponieważ jego
 obecne inventory zawiera placeholdery. Domyślna ścieżka docelowa to:
@@ -36,11 +42,18 @@ Porty `binturo_frontend_ports` należą do konfiguracji Caddy na hostach i nie s
 przekazywane do Jenkinsa. Pipeline wdraża statyczne buildy frontendów przez
 `rsync`; nie uruchamia dla nich osobnych procesów.
 
-Uzupełnij sekrety i prywatne klucze w `vars/jenkins-local-vault.yml`, a następnie
-zaszyfruj plik:
+Uzupełnij sekrety i prywatne klucze w trzech plikach Vault. Globalne hasło
+administratora Jenkins znajduje się w pliku `local`, ponieważ jest to konfiguracja
+lokalnie uruchamianej instancji Jenkins. Każdy plik zaszyfruj innym Vault ID i
+hasłem:
 
 ```bash
-ansible-vault encrypt vars/jenkins-local-vault.yml
+ansible-vault encrypt --vault-id local@prompt \
+  vars/jenkins-local-vault.local.yml
+ansible-vault encrypt --vault-id staging@prompt \
+  vars/jenkins-local-vault.staging.yml
+ansible-vault encrypt --vault-id production@prompt \
+  vars/jenkins-local-vault.production.yml
 ```
 
 Oba lokalne pliki są ignorowane przez Git. Nie zapisuj kluczy prywatnych ani
@@ -51,7 +64,11 @@ haseł w plikach `.example`.
 Pierwsze wygenerowanie:
 
 ```bash
-ansible-playbook jenkins-local.yml --ask-vault-pass --diff
+ansible-playbook jenkins-local.yml \
+  --vault-id local@prompt \
+  --vault-id staging@prompt \
+  --vault-id production@prompt \
+  --diff
 ```
 
 Sekretne zadania używają `no_log`, więc hasła i klucze nie pojawią się w diffie
@@ -63,7 +80,9 @@ na podstawie aktualnych zmiennych:
 
 ```bash
 ansible-playbook jenkins-local.yml \
-  --ask-vault-pass \
+  --vault-id local@prompt \
+  --vault-id staging@prompt \
+  --vault-id production@prompt \
   --extra-vars jenkins_local_overwrite_existing=true
 ```
 
@@ -80,8 +99,11 @@ repozytorium `reservations`:
 - Playbook jedynie przygotowuje lokalne pliki wejściowe Jenkinsa.
 - Nie uruchamia Jenkinsa i nie instaluje wtyczek.
 - Nie wykonuje deploymentu aplikacji.
-- PostgreSQL, JWT i klucze SSH są pobierane wyłącznie z zaszyfrowanego pliku
-  `vars/jenkins-local-vault.yml`.
+- PostgreSQL, JWT i klucze SSH są pobierane wyłącznie z trzech zaszyfrowanych
+  plików `vars/jenkins-local-vault.<środowisko>.yml`.
+- Vault ID `local`, `staging` i `production` pozwalają używać innego hasła dla
+  każdego środowiska. ID zapisane w nagłówku zaszyfrowanego pliku musi odpowiadać
+  ID przekazanemu przy uruchomieniu playbooka.
 - Hasła bazy w Jenkins muszą odpowiadać hasłom skonfigurowanym na właściwych
   hostach.
 - JWT organizatorów i platformy muszą być różne i mieć co najmniej 32 znaki.

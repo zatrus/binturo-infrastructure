@@ -3,6 +3,12 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
+  vars:
+    # This localhost-only play does not use the host Vault from group_vars/all.yml.
+    # Override its become password reference so Jenkins Vault files can be managed
+    # independently from infrastructure inventories.
+    ansible_become_password: ""
 
   pre_tasks:
     - name: Load public Jenkins configuration
@@ -18,7 +24,7 @@
             )
           }}
 
-    - name: Load vaulted Jenkins configuration
+    - name: Load vaulted Jenkins configuration for every environment
       ansible.builtin.include_vars:
         file: >-
           {{
@@ -26,13 +32,25 @@
               'ansible.builtin.first_found',
               {
                 'files': [
-                  'jenkins-local-vault.yml',
-                  'jenkins-local-vault.example.yml'
+                  'jenkins-local-vault.' ~ item ~ '.yml',
+                  'jenkins-local-vault.' ~ item ~ '.example.yml'
                 ],
                 'paths': [playbook_dir ~ '/vars']
               }
             )
           }}
+      loop:
+        - local
+        - staging
+        - production
+      no_log: true
+
+    - name: Assemble vaulted Jenkins environments
+      ansible.builtin.set_fact:
+        vault_jenkins_environments:
+          local: "{{ vault_jenkins_local }}"
+          staging: "{{ vault_jenkins_staging }}"
+          production: "{{ vault_jenkins_production }}"
       no_log: true
 
   roles:
