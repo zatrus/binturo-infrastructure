@@ -159,8 +159,9 @@ BEGIN
 END
 $bootstrap$;
 
--- Backfill DML-only permissions for shared users data, the configured
--- organizers schema and all already provisioned organizer schemas.
+-- Ensure the known shared schemas exist before application migrations start,
+-- then apply DML-only permissions for the organizers backend. Without this,
+-- a schema created later by the platform migrations would miss these grants.
 DO $bootstrap$
 DECLARE
   platform_role text := current_setting('binturo.platform_user');
@@ -175,12 +176,12 @@ BEGIN
       UNION ALL
       SELECT current_setting('binturo.organizers_schema')
     ) configured_schemas
-    WHERE EXISTS (
-      SELECT
-      FROM information_schema.schemata s
-      WHERE s.schema_name = configured_schemas.schema_name
-    )
   LOOP
+    EXECUTE format(
+      'CREATE SCHEMA IF NOT EXISTS %I AUTHORIZATION %I',
+      target_schema,
+      platform_role
+    );
     EXECUTE format('ALTER SCHEMA %I OWNER TO %I', target_schema, platform_role);
     EXECUTE format('REVOKE ALL ON SCHEMA %I FROM %I', target_schema, organizers_role);
     EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', target_schema, organizers_role);
@@ -280,6 +281,7 @@ DO $bootstrap$
 DECLARE
   platform_role text := current_setting('binturo.platform_user');
   organizers_role text := current_setting('binturo.organizers_user');
+  target_schema text;
 BEGIN
   IF NOT has_database_privilege(platform_role, current_database(), 'CREATE') THEN
     RAISE EXCEPTION 'Platform role % lacks CREATE on database %',
@@ -307,5 +309,23 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Organizers role % owns at least one schema', organizers_role;
   END IF;
+
+  FOREACH target_schema IN ARRAY ARRAY[
+    current_setting('binturo.users_schema'),
+    current_setting('binturo.organizers_schema')
+  ]
+  LOOP
+    IF NOT has_schema_privilege(organizers_role, target_schema, 'USAGE') THEN
+      RAISE EXCEPTION 'Organizers role % lacks USAGE on schema %',
+        organizers_role,
+        target_schema;
+    END IF;
+
+    IF has_schema_privilege(organizers_role, target_schema, 'CREATE') THEN
+      RAISE EXCEPTION 'Organizers role % unexpectedly has CREATE on schema %',
+        organizers_role,
+        target_schema;
+    END IF;
+  END LOOP;
 END
 $bootstrap$;
