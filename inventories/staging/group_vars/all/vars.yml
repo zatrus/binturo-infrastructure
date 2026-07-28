@@ -29,6 +29,8 @@ postgres_superuser_password: "{{ vault_postgres_superuser_password }}"
 postgres_platform_password: "{{ vault_postgres_platform_password }}"
 postgres_organizers_password: "{{ vault_postgres_organizers_password }}"
 postgres_backup_password: "{{ vault_postgres_backup_password }}"
+organizers_jwt_secret: "{{ vault_organizers_jwt_secret }}"
+platform_jwt_secret: "{{ vault_platform_jwt_secret }}"
 
 # Password used by the SSH account for sudo/become. The value is stored in Vault.
 ansible_become_password: "{{ vault_ansible_become_password }}"

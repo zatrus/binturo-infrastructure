@@ -3,6 +3,8 @@ vault_postgres_superuser_password: CHANGE_ME
 vault_postgres_platform_password: CHANGE_ME
 vault_postgres_organizers_password: CHANGE_ME
 vault_postgres_backup_password: CHANGE_ME
+vault_organizers_jwt_secret: CHANGE_ME_MINIMUM_32_RANDOM_CHARACTERS
+vault_platform_jwt_secret: CHANGE_ME_DIFFERENT_MINIMUM_32_RANDOM_CHARACTERS
 vault_ansible_become_password: CHANGE_ME
 vault_cloudflare_origin_certificate: |
   -----BEGIN CERTIFICATE-----
