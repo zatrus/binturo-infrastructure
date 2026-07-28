@@ -1,16 +1,30 @@
 ---
-environment_name: prod
+
+custom_admin_user: binturo_s
+custom_ssh_port: 4285
+custom_admin_authorized_key_file: /home/gwerko/ovh/binturo-ovh-staging.pub
+environment_name: staging
 
 binturo_domains:
-  platform: platform.example.com
-  organizers: organizers.example.com
+  platform: platform-staging.binturo.com
+  organizers_staff: staff-staging.binturo.com
+  organizers_trainer: trainer-staging.binturo.com
+  organizers_client: app-staging.binturo.com
 
-postgres_database: binturo_prod
+# Cloudflare terminates visitor TLS and validates this host with Origin CA.
+caddy_tls_internal: false
+caddy_tls_cloudflare_origin: true
+caddy_cloudflare_origin_certificate: "{{ vault_cloudflare_origin_certificate }}"
+caddy_cloudflare_origin_private_key: "{{ vault_cloudflare_origin_private_key }}"
+
+postgres_database: binturo_staging
 postgres_data_path: "{{ binturo_root }}/persistent/postgres"
 
-prometheus_retention_time: 30d
-prometheus_retention_size: 50GB
+prometheus_retention_time: 10d
+prometheus_retention_size: 10GB
 
+# Vaulted values are documented in inventories/prod/vault.example.yml and loaded
+# from group_vars/all/vault.yml.
 postgres_superuser_password: "{{ vault_postgres_superuser_password }}"
 postgres_platform_password: "{{ vault_postgres_platform_password }}"
 postgres_organizers_password: "{{ vault_postgres_organizers_password }}"

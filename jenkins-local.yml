@@ -1,0 +1,31 @@
+---
+- name: Generate Jenkins configuration from the selected inventory
+  hosts: hardened_hosts
+  connection: local
+  gather_facts: false
+  become: false
+
+  pre_tasks:
+    - name: Load shared public Jenkins configuration
+      ansible.builtin.include_vars:
+        file: >-
+          {{
+            lookup(
+              'ansible.builtin.first_found',
+              {
+                'files': ['jenkins-local.yml', 'jenkins-local.example.yml'],
+                'paths': [playbook_dir ~ '/vars']
+              }
+            )
+          }}
+
+    - name: Map inventory environment to Jenkins environment
+      ansible.builtin.set_fact:
+        jenkins_environment_name: >-
+          {{
+            jenkins_environment_name_map[environment_name]
+            | default(environment_name)
+          }}
+
+  roles:
+    - jenkins_local_config

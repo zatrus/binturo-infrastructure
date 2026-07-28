@@ -6,7 +6,7 @@ dla:
 
 - `binturo-platform`;
 - `binturo-organizers`;
-- dwóch frontendów;
+- czterech frontendów: platform oraz organizers `staff`, `trainer` i `client`;
 - plików współdzielonych przez backendy.
 
 Osobna, przenośna konfiguracja panelu Semaphore UI dla Ubuntu i Windows znajduje
@@ -47,7 +47,9 @@ Konfiguracja jest podzielona na trzy etapy:
    katalogów aplikacji.
 
 Rola `python_venvs` tworzy środowiska `venv` w katalogach
-`apps/binturo-organizers` i `apps/frontend-platform`. Domyślnie wykonuje
+`apps/backend-organizers`, `apps/backend-platform` i `apps/frontend-platform`.
+Trzy frontendy organizers znajdują się w `apps/frontend-organizers/{staff,trainer,client}`.
+Domyślnie wykonuje
 `python3 -m venv venv`. Interpreter można zmienić, ustawiając np. w zmiennych
 środowiska:
 
@@ -257,11 +259,16 @@ wykonaj procedurę na hoście produkcyjnym.
 Ansible tworzy:
 
 - bazę `binturo_dev` albo `binturo_prod`;
-- rolę właścicielską `binturo_platform_owner` bez możliwości logowania;
-- konto `binturo_platform_app`, należące do roli właścicielskiej;
-- konto `binturo_organizers_app` bez praw DDL;
+- konto `binturo_platform` będące bezpośrednim właścicielem bazy,
+  schematów i obiektów, z prawem tworzenia schematów oraz wykonywania DDL/DML;
+- konto `binturo_organizers` bez praw DDL, z dostępem DML wyłącznie
+  do dozwolonych schematów;
 - konto `binturo_backup` z rolą `pg_read_all_data`;
 - początkowy schemat `binturo_platform`.
+
+Nazwa `binturo_platform_owner` jest zachowana jedynie jako zmienna
+migracyjna. Bootstrap przenosi własność starych obiektów na
+`binturo_platform` i odbiera członkostwo w dawnej roli.
 
 `binturo-platform` pozostaje właścicielem migracji oraz dynamicznych schematów.
 `binturo-organizers` korzysta z wielu schematów, ale ich tworzenie i aktualizacja
@@ -292,7 +299,8 @@ korzysta z TLS-ALPN-01 na porcie 443. HTTP/3 jest wyłączone, aby nie otwierać
 [docs/caddy-dynamic-config.md](docs/caddy-dynamic-config.md).
 
 Logi dostępu Caddy mają format JSON i trafiają osobno do
-`/var/log/caddy/platform.log` oraz `/var/log/caddy/organizers.log`. Caddy obraca je
+`/var/log/caddy/platform.log` oraz osobnych logów `organizers-staff.log`,
+`organizers-trainer.log` i `organizers-client.log`. Caddy obraca je
 codziennie o północy czasu lokalnego i zachowuje do 31 plików nie starszych niż
 31 dni. Logi operacyjne usługi pozostają w `journald`.
 

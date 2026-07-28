@@ -17,6 +17,7 @@ usługa `root`. Rozpocznij sesję:
 sudo -iu binturo
 export XDG_RUNTIME_DIR=/run/user/1500
 export DOCKER_HOST=unix:///run/user/1500/docker.sock
+export BINTURO_ENVIRONMENT=dev
 cd /srv/binturo/compose
 ```
 
@@ -59,9 +60,9 @@ Backendy są obsługiwane przez systemowe jednostki działające jako użytkowni
 `binturo`:
 
 - `binturo-platform.service` wywołuje
-  `/srv/binturo/apps/binturo-platform/binturo_platform.sh`;
+  `/srv/binturo/apps/backend-platform/binturo_platform.sh`;
 - `binturo-organizers.service` wywołuje
-  `/srv/binturo/apps/binturo-organizers/binturo_organizers.sh`.
+  `/srv/binturo/apps/backend-organizers/binturo_organizers.sh`.
 
 Jednostki są włączone podczas startu hosta, czekają na rootless Docker i zdrowy
 PostgreSQL, a następnie wykonują skrypt z argumentem `start`. Podczas zatrzymania
@@ -87,8 +88,8 @@ sudo journalctl -u binturo-platform.service -u binturo-organizers.service -f
 Ręczne sprawdzenie interfejsu skryptów:
 
 ```bash
-sudo -u binturo /srv/binturo/apps/binturo-platform/binturo_platform.sh status
-sudo -u binturo /srv/binturo/apps/binturo-organizers/binturo_organizers.sh status
+sudo -u binturo /srv/binturo/apps/backend-platform/binturo_platform.sh status
+sudo -u binturo /srv/binturo/apps/backend-organizers/binturo_organizers.sh status
 ```
 
 Ansible tworzy początkowe skrypty tylko wtedy, gdy pliki nie istnieją. Kolejne
@@ -102,15 +103,15 @@ proces pozostający na pierwszym planie przekroczy timeout jednostki `oneshot`.
 Ansible tworzy środowiska w następujących lokalizacjach:
 
 ```text
-/srv/binturo/apps/binturo-organizers/venv
+/srv/binturo/apps/backend-organizers/venv
 /srv/binturo/apps/frontend-platform/venv
 ```
 
 Kontrola interpretera i zainstalowanych pakietów:
 
 ```bash
-sudo -u binturo /srv/binturo/apps/binturo-organizers/venv/bin/python --version
-sudo -u binturo /srv/binturo/apps/binturo-organizers/venv/bin/pip list
+sudo -u binturo /srv/binturo/apps/backend-organizers/venv/bin/python --version
+sudo -u binturo /srv/binturo/apps/backend-organizers/venv/bin/pip list
 sudo -u binturo /srv/binturo/apps/frontend-platform/venv/bin/python --version
 ```
 
@@ -126,7 +127,7 @@ udostępnia gotowego koła dla używanej wersji Pythona. Diagnostyka:
 ```bash
 gcc --version
 pg_config --version
-/srv/binturo/apps/binturo-platform/venv/bin/python --version
+/srv/binturo/apps/backend-platform/venv/bin/python --version
 ```
 
 ## PostgreSQL
@@ -295,22 +296,34 @@ Formatowanie pliku dynamicznego:
 sudo caddy fmt --overwrite /etc/caddy/sites-enabled/nazwa.caddy
 ```
 
-Pliki `10-platform.caddy` i `20-organizers.caddy` są zarządzane przez Ansible i nie
+Pliki `10-platform.caddy`, `20-organizers-staff.caddy`,
+`21-organizers-trainer.caddy` i `22-organizers-client.caddy` są zarządzane przez
+Ansible i nie
 powinny być edytowane ręcznie. Dodatkowe pliki dynamiczne muszą mieć inne nazwy.
 
-Frontendy są statycznymi buildami npm i nie mają osobnych usług ani portów. Caddy
+Frontendy są statycznymi buildami npm i nie mają osobnych usług systemd. Caddy
+udostępnia frontend platform przez jego domenę, a frontendy organizers dodatkowo
+na osobnych portach loopback: `staff` 18201, `trainer` 18202 i `client` 18203. Caddy
 serwuje je domyślnie z:
 
 ```text
 /srv/binturo/apps/frontend-platform
-/srv/binturo/apps/frontend-organizers
+/srv/binturo/apps/frontend-organizers/staff
+/srv/binturo/apps/frontend-organizers/trainer
+/srv/binturo/apps/frontend-organizers/client
 ```
 
 Kontrola plików i uprawnień:
 
 ```bash
 sudo -u caddy test -r /srv/binturo/apps/frontend-platform/index.html
-sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/index.html
+sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/staff/index.html
+sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/trainer/index.html
+sudo -u caddy test -r /srv/binturo/apps/frontend-organizers/client/index.html
+
+curl --fail http://127.0.0.1:18201/
+curl --fail http://127.0.0.1:18202/
+curl --fail http://127.0.0.1:18203/
 ```
 
 Logi dostępu są zapisywane osobno w formacie JSON i rotowane codziennie o północy
@@ -318,7 +331,9 @@ czasu lokalnego. Ansible zachowuje maksymalnie 31 plików nie starszych niż 31 
 
 ```bash
 sudo tail -f /var/log/caddy/platform.log
-sudo tail -f /var/log/caddy/organizers.log
+sudo tail -f /var/log/caddy/organizers-staff.log
+sudo tail -f /var/log/caddy/organizers-trainer.log
+sudo tail -f /var/log/caddy/organizers-client.log
 sudo ls -lah /var/log/caddy
 ```
 
@@ -458,3 +473,184 @@ docker volume ls
 
 Po ręcznej interwencji uruchom odpowiedni playbook Ansible w `--check --diff`, aby
 wykryć rozbieżność konfiguracji względem repozytorium.
+
+## Całkowite usunięcie środowiska Binturo z hosta
+
+Poniższa procedura jest **nieodwracalna**. Usuwa kontenery, sieci, wolumen metryk,
+pliki aplikacji oraz bazę PostgreSQL znajdującą się w
+`/srv/binturo/persistent/postgres`. Przed rozpoczęciem wykonaj i skopiuj na inny
+host co najmniej backup PostgreSQL, potrzebne metryki, pliki współdzielone i
+konfigurację aplikacji.
+
+Nie usuwaj całego `/srv`. Jest to standardowy katalog danych usług i może zawierać
+zasoby niezwiązane z Binturo. Zakresem tej instalacji jest wyłącznie dokładna
+ścieżka `/srv/binturo`.
+
+Preferowanym sposobem jest skrypt `scripts/remove-binturo.sh`. Najpierw skopiuj go
+na host i uruchom bez `--execute`, aby zobaczyć zakres operacji:
+
+```bash
+chmod 0755 remove-binturo.sh
+./remove-binturo.sh --environment dev
+```
+
+Po wykonaniu i zweryfikowaniu backupu poza hostem uruchom świadomie:
+
+```bash
+sudo ./remove-binturo.sh \
+  --environment dev \
+  --execute \
+  --backup-confirmed \
+  --stop-caddy
+```
+
+Skrypt wymaga dodatkowo ręcznego wpisania `DELETE /srv/binturo`. Opcję
+`--stop-caddy` pomiń, jeżeli Caddy obsługuje także inne witryny. Dalsza część tego
+rozdziału opisuje te same kroki ręcznie i służy również do diagnostyki.
+
+### 1. Ustal środowisko i sprawdź zakres
+
+W dalszych poleceniach użyj `dev`, `staging` albo `prod`. Przykład dla `dev`:
+
+```bash
+readonly BINTURO_ENVIRONMENT=dev
+readonly BINTURO_ROOT=/srv/binturo
+readonly BINTURO_USER=binturo
+readonly BINTURO_UID=1500
+
+test "$(realpath -m -- "$BINTURO_ROOT")" = /srv/binturo || {
+  echo "Nieprawidłowa ścieżka — przerwano" >&2
+  exit 1
+}
+
+sudo test -d /srv/binturo || {
+  echo "/srv/binturo nie istnieje — przerwano" >&2
+  exit 1
+}
+
+sudo find /srv/binturo -maxdepth 2 -mindepth 1 -xdev -print
+```
+
+Sprawdź projekty Compose przed usunięciem:
+
+```bash
+sudo -u binturo \
+  XDG_RUNTIME_DIR=/run/user/1500 \
+  DOCKER_HOST=unix:///run/user/1500/docker.sock \
+  docker compose ls
+
+sudo -u binturo \
+  XDG_RUNTIME_DIR=/run/user/1500 \
+  DOCKER_HOST=unix:///run/user/1500/docker.sock \
+  docker ps -a
+```
+
+Jeżeli UID użytkownika `binturo` jest inny niż `1500`, przerwij i popraw
+`BINTURO_UID`, `XDG_RUNTIME_DIR` oraz `DOCKER_HOST` zgodnie z wynikiem:
+
+```bash
+id binturo
+```
+
+### 2. Zatrzymaj usługi systemowe
+
+```bash
+sudo systemctl stop binturo-platform.service binturo-organizers.service
+sudo systemctl disable binturo-platform.service binturo-organizers.service
+sudo systemctl stop caddy.service
+```
+
+Caddy jest zatrzymywany, ponieważ po usunięciu frontendów jego konfiguracja nadal
+wskazywałaby na nieistniejące pliki. Nie usuwaj Caddy, jeśli obsługuje również
+inne witryny.
+
+### 3. Usuń projekty Compose Binturo
+
+Uruchom powłokę użytkownika rootless Docker:
+
+```bash
+sudo -iu binturo
+export XDG_RUNTIME_DIR=/run/user/1500
+export DOCKER_HOST=unix:///run/user/1500/docker.sock
+cd /srv/binturo/compose
+```
+
+Usuń monitoring razem z jego wolumenem metryk oraz PostgreSQL. Dane PostgreSQL są
+bind mountem w `/srv/binturo`, więc samo `down --volumes` ich nie usuwa:
+
+```bash
+docker compose \
+  --project-name "binturo-monitoring-${BINTURO_ENVIRONMENT}" \
+  --file compose.monitoring.yml \
+  down --volumes --remove-orphans
+
+docker compose \
+  --project-name "binturo-${BINTURO_ENVIRONMENT}" \
+  --file compose.postgres.yml \
+  down --volumes --remove-orphans
+
+docker ps -a
+docker network ls
+docker volume ls
+exit
+```
+
+Po `docker ps -a` nie powinny pozostać kontenery `binturo-*`. Jeżeli pozostały,
+nie usuwaj ich w ciemno — sprawdź `docker inspect NAZWA_KONTENERA` i ustal, z
+którego projektu pochodzą.
+
+### 4. Opcjonalnie wyczyść wszystkie nieużywane zasoby rootless Docker
+
+Ten krok może usunąć obrazy, cache i wolumeny niezwiązane z Binturo. Wykonaj go
+tylko wtedy, gdy konto `binturo` jest przeznaczone wyłącznie dla tej instalacji i
+wcześniejsze listy `docker ps -a`, `docker volume ls` oraz `docker network ls`
+zostały sprawdzone:
+
+```bash
+sudo -u binturo \
+  XDG_RUNTIME_DIR=/run/user/1500 \
+  DOCKER_HOST=unix:///run/user/1500/docker.sock \
+  docker system prune --all --volumes --force
+```
+
+Polecenie usuwa tylko zasoby nieużywane. Nie usuwa działających kontenerów, dlatego
+znane projekty Compose są zatrzymywane i usuwane w poprzednim kroku.
+
+### 5. Zatrzymaj rootless Docker i usuń katalog Binturo
+
+```bash
+sudo -u binturo \
+  XDG_RUNTIME_DIR=/run/user/1500 \
+  systemctl --user stop docker.service
+
+test "$(realpath -m -- /srv/binturo)" = /srv/binturo || {
+  echo "Nieprawidłowa ścieżka — przerwano" >&2
+  exit 1
+}
+
+sudo rm -rf --one-file-system -- /srv/binturo
+sudo test ! -e /srv/binturo
+```
+
+Ostatnie polecenie powinno zakończyć się sukcesem. Nie zastępuj `/srv/binturo`
+zmienną, globem, `/srv` ani ścieżką obliczaną dynamicznie.
+
+### 6. Weryfikacja
+
+```bash
+sudo systemctl status binturo-platform.service binturo-organizers.service
+sudo systemctl status caddy.service
+sudo test ! -e /srv/binturo && echo "Katalog Binturo usunięty"
+
+sudo -u binturo \
+  XDG_RUNTIME_DIR=/run/user/1500 \
+  systemctl --user is-active docker.service
+```
+
+Ostatnie polecenie powinno zwrócić `inactive`. Status zatrzymanych usług systemd
+może zwrócić kod różny od zera; w tej procedurze jest to oczekiwane.
+
+Jednostki systemd, konfiguracja Caddy, pakiety Docker/Caddy i konto `binturo`
+pozostają na hoście. Ich usuwanie jest osobną operacją systemową. Ponowne
+uruchomienie `03-site.yml` odtworzy `/srv/binturo`, konfigurację Compose i włączy
+usługi zgodnie z Ansible.

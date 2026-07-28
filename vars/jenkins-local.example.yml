@@ -1,0 +1,8 @@
+---
+# Shared Jenkins settings only. Environment values come from the selected inventory.
+# The output path is configured centrally in group_vars/all.yml.
+jenkins_local_overwrite_existing: false
+
+jenkins_repository_url: https://github.com/CHANGE_ME/reservations.git
+jenkins_admin_user: admin
+jenkins_url: http://localhost:9100/

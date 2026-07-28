@@ -8,9 +8,9 @@
     mode: "0750"
     force: false
   loop:
-    - directory: "{{ binturo_root }}/apps/binturo-platform"
+    - directory: "{{ binturo_root }}/apps/backend-platform"
       script: binturo_platform.sh
-    - directory: "{{ binturo_root }}/apps/binturo-organizers"
+    - directory: "{{ binturo_root }}/apps/backend-organizers"
       script: binturo_organizers.sh
   when: binturo_user_available | default(false)
 
@@ -24,11 +24,11 @@
   loop:
     - service: binturo-platform
       description: Binturo Platform backend
-      working_directory: "{{ binturo_root }}/apps/binturo-platform"
+      working_directory: "{{ binturo_root }}/apps/backend-platform"
       script: binturo_platform.sh
     - service: binturo-organizers
       description: Binturo Organizers backend
-      working_directory: "{{ binturo_root }}/apps/binturo-organizers"
+      working_directory: "{{ binturo_root }}/apps/backend-organizers"
       script: binturo_organizers.sh
   notify: Reload systemd and restart backend services
   when: binturo_user_available | default(false)

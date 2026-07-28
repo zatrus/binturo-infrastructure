@@ -1,0 +1,145 @@
+---
+- name: Validate shared Jenkins configuration
+  ansible.builtin.assert:
+    that:
+      - jenkins_output_dir | default('') | length > 0
+      - (jenkins_output_dir | regex_search('^/')) is not none
+      - jenkins_repository_url | default('') | length > 0
+      - "'CHANGE_ME' not in jenkins_repository_url"
+      - jenkins_admin_user | default('') | length > 0
+      - jenkins_url | default('') | length > 0
+      - jenkins_environment_name in jenkins_local_environment_names
+    fail_msg: >-
+      Set an absolute jenkins_output_dir in group_vars/all.yml and complete the
+      shared Jenkins configuration and environment mapping.
+  no_log: true
+
+- name: Validate inventory-derived Jenkins configuration
+  ansible.builtin.assert:
+    that:
+      - ansible_host | string | length > 0
+      - ansible_port | int > 0
+      - ansible_port | int < 65536
+      - ansible_user | string | length > 0
+      - binturo_user | length > 0
+      - postgres_database | length > 0
+      - postgres_host_bind_address | length > 0
+      - postgres_host_port | int > 0
+      - postgres_platform_user | length > 0
+      - postgres_organizers_user | length > 0
+      - postgres_initial_schema | length > 0
+      - postgres_organizers_schema | length > 0
+      - postgres_users_schema | length > 0
+      - binturo_domains.values() | list | unique | length == 4
+      - binturo_ports.platform | int > 0
+      - binturo_ports.organizers | int > 0
+      - (binturo_ports.platform | int) != (binturo_ports.organizers | int)
+      - binturo_frontend_roots.values() | list | unique | length == 4
+    fail_msg: "The selected inventory does not contain a complete Jenkins deployment configuration."
+
+- name: Validate inventory database secrets
+  ansible.builtin.assert:
+    that:
+      - postgres_organizers_password | length > 0
+      - postgres_platform_password | length > 0
+    fail_msg: "Complete application database passwords in the selected inventory Vault."
+  no_log: true
+
+- name: Validate authorized public key path
+  ansible.builtin.assert:
+    that:
+      - custom_admin_authorized_key_file | default('') | length > 4
+      - custom_admin_authorized_key_file.endswith('.pub')
+    fail_msg: >-
+      custom_admin_authorized_key_file must point to the authorized .pub file.
+
+- name: Inspect Jenkins SSH private key
+  ansible.builtin.stat:
+    path: "{{ jenkins_ssh_private_key_file }}"
+  register: jenkins_ssh_private_key_stat
+  no_log: true
+
+- name: Require private counterpart of the authorized public key
+  ansible.builtin.assert:
+    that:
+      - jenkins_ssh_private_key_stat.stat.isreg | default(false)
+    fail_msg: >-
+      custom_admin_authorized_key_file must point to a .pub file and its
+      private counterpart (the same path without .pub) must exist locally.
+  no_log: true
+
+- name: Create Jenkins generated configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ jenkins_output_dir }}"
+    - "{{ jenkins_output_dir }}/config/organizers"
+    - "{{ jenkins_output_dir }}/config/platform"
+    - "{{ jenkins_output_dir }}/secrets/fragments"
+    - "{{ jenkins_output_dir }}/secrets/keys"
+
+- name: Generate shared Jenkins secrets fragment
+  ansible.builtin.template:
+    src: shared-secrets.properties.j2
+    dest: "{{ jenkins_output_dir }}/secrets/fragments/shared.properties"
+    force: "{{ jenkins_local_overwrite_existing | bool }}"
+  no_log: true
+
+- name: Protect generated Jenkins secret fragments from Git
+  ansible.builtin.template:
+    src: fragments.gitignore.j2
+    dest: "{{ jenkins_output_dir }}/secrets/fragments/.gitignore"
+    force: true
+
+- name: Generate Jenkins secrets merge scripts
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ jenkins_output_dir }}/secrets/{{ item.dest }}"
+    mode: "{{ item.mode }}"
+    force: true
+  loop:
+    - src: merge-secrets.sh.j2
+      dest: merge-secrets.sh
+      mode: "0750"
+    - src: merge-secrets.ps1.j2
+      dest: merge-secrets.ps1
+      mode: "0640"
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Generate environment Jenkins secrets fragment
+  ansible.builtin.template:
+    src: environment-secrets.properties.j2
+    dest: "{{ jenkins_output_dir }}/secrets/fragments/{{ jenkins_environment_name }}.properties"
+    force: "{{ jenkins_local_overwrite_existing | bool }}"
+  no_log: true
+
+- name: Generate environment Jenkins SSH private keys
+  ansible.builtin.copy:
+    src: "{{ jenkins_ssh_private_key_file }}"
+    dest: "{{ jenkins_output_dir }}/secrets/keys/{{ item | upper }}_{{ jenkins_environment_name | upper }}_SSH_KEY"
+    mode: "0600"
+    force: "{{ jenkins_local_overwrite_existing | bool }}"
+  loop: "{{ jenkins_local_application_names }}"
+  loop_control:
+    label: "{{ item }} / {{ jenkins_environment_name }}"
+  no_log: true
+
+- name: Generate environment Jenkins application configuration
+  ansible.builtin.template:
+    src: environment.env.j2
+    dest: "{{ jenkins_output_dir }}/config/{{ item }}/{{ jenkins_environment_name }}.env"
+    force: "{{ jenkins_local_overwrite_existing | bool }}"
+  loop: "{{ jenkins_local_application_names }}"
+  loop_control:
+    label: "{{ item }} / {{ jenkins_environment_name }}"
+  vars:
+    jenkins_config_application: "{{ item }}"
+
+- name: Report generated Jenkins configuration
+  ansible.builtin.debug:
+    msg:
+      - "Generated Jenkins files for {{ jenkins_environment_name }} from inventory host {{ inventory_hostname }}."
+      - "Output directory: {{ jenkins_output_dir }}"
+      - "Merge secrets/fragments/*.properties into secrets/secrets.properties before starting Jenkins."

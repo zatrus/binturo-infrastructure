@@ -7,13 +7,16 @@ psql \
   --dbname postgres \
   --set=ON_ERROR_STOP=1 \
   --set=database_name='{{ postgres_database }}' \
-  --set=owner_role='{{ postgres_owner_role }}' \
+  --set=legacy_owner_role='{{ postgres_legacy_owner_role }}' \
+  --set=legacy_platform_user='{{ postgres_legacy_platform_user }}' \
+  --set=legacy_organizers_user='{{ postgres_legacy_organizers_user }}' \
   --set=platform_user='{{ postgres_platform_user }}' \
   --set=organizers_user='{{ postgres_organizers_user }}' \
   --set=backup_user='{{ postgres_backup_user }}' \
   --set=initial_schema='{{ postgres_initial_schema }}' \
+  --set=organizers_schema='{{ postgres_organizers_schema }}' \
+  --set=users_schema='{{ postgres_users_schema }}' \
   --set=platform_password="$(tr -d '\r\n' </run/secrets/postgres_platform_password)" \
   --set=organizers_password="$(tr -d '\r\n' </run/secrets/postgres_organizers_password)" \
   --set=backup_password="$(tr -d '\r\n' </run/secrets/postgres_backup_password)" \
   --file /opt/binturo/bootstrap.sql
-

@@ -1,70 +1,75 @@
-# Dynamiczne schematy PostgreSQL
+# Model uprawnień PostgreSQL
 
-## Odpowiedzialność
+## Role aplikacyjne
 
-`binturo-platform` tworzy i aktualizuje wszystkie dynamiczne schematy PostgreSQL.
-`binturo-organizers` korzysta z ich danych, ale nie może tworzyć, zmieniać ani usuwać
-schematów i obiektów.
+Rola binturo_platform jest bezpośrednim właścicielem bazy aplikacyjnej,
+schematów oraz obiektów tworzonych przez migracje. Ma:
 
-Ansible przygotowuje role oraz bazę, lecz nie zna nazw schematów tworzonych później.
-Dlatego po utworzeniu każdego dynamicznego schematu `binturo-platform` musi nadać
-uprawnienia roli `binturo_organizers_app`.
+- CONNECT i CREATE na bazie;
+- pełne DDL wynikające z własności schematów i obiektów;
+- pełne DML na swoich tabelach;
+- wyłączne prawo tworzenia i aktualizowania schematów platformy, użytkowników
+  oraz organizatorów.
 
-## Uprawnienia do istniejących obiektów
+Rola binturo_organizers nie jest właścicielem żadnego schematu ani obiektu.
+Ma:
 
-Poniższy SQL należy wykonać w tej samej transakcji lub operacji inicjalizującej
-schemat. `nowy_schemat` należy zastąpić bezpiecznie zacytowanym identyfikatorem.
+- CONNECT do bazy;
+- USAGE na dozwolonych schematach;
+- SELECT, INSERT, UPDATE, DELETE na tabelach schematów organizatorów
+  i współdzielonego schematu użytkowników;
+- USAGE, SELECT na ich sekwencjach;
+- tylko SELECT do tabeli binturo_platform.organizers.
 
-```sql
-GRANT USAGE ON SCHEMA nowy_schemat
-TO binturo_organizers_app;
+Rola organizers nie otrzymuje CREATE na bazie ani schematach. Nie może
+wykonywać migracji, CREATE, ALTER, DROP ani samodzielnie zakładać schematów.
 
-GRANT SELECT, INSERT, UPDATE, DELETE
-ON ALL TABLES IN SCHEMA nowy_schemat
-TO binturo_organizers_app;
+## Bootstrap i istniejące instalacje
 
-GRANT USAGE, SELECT, UPDATE
-ON ALL SEQUENCES IN SCHEMA nowy_schemat
-TO binturo_organizers_app;
-```
+Bootstrap Ansible jest idempotentny. Dla nowych instalacji ustawia login
+platformy jako właściciela bazy i schematu początkowego. Dla istniejących
+instalacji wykonuje REASSIGN OWNED ze starej roli binturo_platform_owner,
+odbiera członkostwo w tej roli i porządkuje granty organizatora. Migruje także
+własność ze starszych loginów binturo_platform_app i binturo_organizers_app,
+a następnie blokuje im możliwość logowania.
 
-Jeżeli `binturo-organizers` ma tylko odczytywać dane, należy ograniczyć prawa tabel
-do `SELECT`, a sekwencje pominąć.
+Przy każdym uruchomieniu playbooka wykonywany jest backfill uprawnień dla:
 
-## Uprawnienia do przyszłych obiektów
+- binturo_users, jeśli istnieje;
+- skonfigurowanego schematu organizers, jeśli istnieje;
+- istniejących schematów zapisanych w binturo_platform.organizers.
 
-Granty dla istniejących tabel nie obejmują tabel utworzonych przez następne migracje.
-Po utworzeniu schematu trzeba więc ustawić również domyślne uprawnienia:
+Backfill najpierw odbiera wcześniejsze granty, a następnie nadaje wyłącznie
+wymagane DML i dostęp do sekwencji.
 
-```sql
-ALTER DEFAULT PRIVILEGES
-FOR ROLE binturo_platform_owner
-IN SCHEMA nowy_schemat
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES
-TO binturo_organizers_app;
+## Nowe schematy organizatorów
 
-ALTER DEFAULT PRIVILEGES
-FOR ROLE binturo_platform_owner
-IN SCHEMA nowy_schemat
-GRANT USAGE, SELECT, UPDATE ON SEQUENCES
-TO binturo_organizers_app;
-```
+Ansible nie zna nazw schematów tworzonych w przyszłości. Backend platformy musi
+więc w tej samej transakcji, w której tworzy lub migruje schemat organizatora:
 
-`ALTER DEFAULT PRIVILEGES` dotyczy obiektów tworzonych przez wskazaną rolę. Migracje
-muszą więc tworzyć obiekty jako `binturo_platform_owner`. Jeśli obiekty utworzy inna
-rola, powyższe prawa domyślne nie zostaną zastosowane.
+    GRANT USAGE ON SCHEMA nowy_schemat
+    TO binturo_organizers;
 
-## Bezpieczna implementacja
+    GRANT SELECT, INSERT, UPDATE, DELETE
+    ON ALL TABLES IN SCHEMA nowy_schemat
+    TO binturo_organizers;
 
-Nazwy schematów są identyfikatorami SQL i nie mogą być przekazywane jako zwykłe
-parametry tekstowe. Kod aplikacji powinien korzystać z mechanizmu bezpiecznego
-cytowania identyfikatorów udostępnianego przez sterownik, np. `psycopg.sql.Identifier`.
+    GRANT USAGE, SELECT
+    ON ALL SEQUENCES IN SCHEMA nowy_schemat
+    TO binturo_organizers;
 
-Operacja utworzenia schematu powinna zakończyć się błędem, jeżeli nie uda się nadać
-pełnego zestawu wymaganych uprawnień. Dzięki temu nie powstanie częściowo
-skonfigurowany schemat, którego `binturo-organizers` nie może prawidłowo używać.
+    ALTER DEFAULT PRIVILEGES
+    FOR ROLE binturo_platform
+    IN SCHEMA nowy_schemat
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES
+    TO binturo_organizers;
 
-Po każdej migracji dodającej obiekty warto wykonać ponownie granty `ON ALL TABLES`
-i `ON ALL SEQUENCES`. Jest to idempotentne i zabezpiecza także obiekty utworzone przez
-starszy kod, zanim skonfigurowano prawa domyślne.
+    ALTER DEFAULT PRIVILEGES
+    FOR ROLE binturo_platform
+    IN SCHEMA nowy_schemat
+    GRANT USAGE, SELECT ON SEQUENCES
+    TO binturo_organizers;
 
+Nazwy schematów są identyfikatorami SQL. Kod aplikacji musi korzystać z
+bezpiecznego cytowania identyfikatorów, a utworzenie schematu i nadanie grantów
+powinno być jedną atomową operacją.

@@ -7,7 +7,9 @@ environment_name: prod
 
 binturo_domains:
   platform: platform.binturo.com
-  organizers: app.binturo.com
+  organizers_staff: staff.binturo.com
+  organizers_trainer: trainer.binturo.com
+  organizers_client: app.binturo.com
 
 # Cloudflare terminates visitor TLS and validates this host with Origin CA.
 caddy_tls_internal: false

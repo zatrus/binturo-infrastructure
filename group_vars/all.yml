@@ -20,10 +20,14 @@ binturo_uid: 1500
 binturo_gid: 1500
 binturo_root: /srv/binturo
 binturo_timezone: Europe/Warsaw
+
+# Local output directory used by jenkins-local.yml.
+jenkins_output_dir: /mnt/d/projects/reservations-platform/jenkins
+
 binturo_venv_python_executable: python3
 binturo_venv_directories:
-  - "{{ binturo_root }}/apps/binturo-organizers"
-  - "{{ binturo_root }}/apps/binturo-platform"
+  - "{{ binturo_root }}/apps/backend-organizers"
+  - "{{ binturo_root }}/apps/backend-platform"
 
 docker_apt_arch: amd64
 docker_rootless_socket: "unix:///run/user/{{ binturo_uid }}/docker.sock"
@@ -35,20 +39,31 @@ postgres_host_bind_address: 127.0.0.1
 postgres_host_port: 5432
 postgres_legacy_volume_name: "binturo_{{ environment_name }}_postgres_data"
 postgres_superuser: postgres
-postgres_owner_role: binturo_platform_owner
-postgres_platform_user: binturo_platform_app
-postgres_organizers_user: binturo_organizers_app
+postgres_legacy_owner_role: binturo_platform_owner
+postgres_legacy_platform_user: binturo_platform_app
+postgres_legacy_organizers_user: binturo_organizers_app
+postgres_platform_user: binturo_platform
+postgres_organizers_user: binturo_organizers
 postgres_backup_user: binturo_backup
 postgres_initial_schema: binturo_platform
+postgres_organizers_schema: binturo
+postgres_users_schema: binturo_users
 
 binturo_ports:
   platform: 18101
   organizers: 18102
   prometheus: 19090
 
+binturo_frontend_ports:
+  organizers_staff: 18201
+  organizers_trainer: 18202
+  organizers_client: 18203
+
 binturo_frontend_roots:
   platform: "{{ binturo_root }}/apps/frontend-platform"
-  organizers: "{{ binturo_root }}/apps/frontend-organizers"
+  organizers_staff: "{{ binturo_root }}/apps/frontend-organizers/staff"
+  organizers_trainer: "{{ binturo_root }}/apps/frontend-organizers/trainer"
+  organizers_client: "{{ binturo_root }}/apps/frontend-organizers/client"
 
 caddy_email: admin@example.com
 caddy_dynamic_config_dir: /etc/caddy/sites-enabled

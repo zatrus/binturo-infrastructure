@@ -1,4 +1,10 @@
 .vault-password
+vars/jenkins-local.yml
+# Legacy single-vault file; no longer loaded, but keep ignored during migration.
+vars/jenkins-local-vault.yml
+vars/jenkins-local-vault.local.yml
+vars/jenkins-local-vault.staging.yml
+vars/jenkins-local-vault.production.yml
 .venv/
 *.retry
 inventories/*/vault.yml
