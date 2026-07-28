@@ -115,7 +115,11 @@ run_docker() {
   runuser -u "$BINTURO_USER" -- env \
     "XDG_RUNTIME_DIR=$runtime_dir" \
     "DOCKER_HOST=$docker_host" \
-    docker "$@"
+    sh -c '
+      cd "$1"
+      shift
+      exec docker "$@"
+    ' sh "$BINTURO_ROOT" "$@"
 }
 
 log "Środowisko: $environment_name"

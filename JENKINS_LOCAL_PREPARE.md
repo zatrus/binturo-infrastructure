@@ -1,109 +1,123 @@
-# Lokalne przygotowanie plików Jenkins przez Ansible
+# Generowanie konfiguracji Jenkins z inventory
 
-Playbook `jenkins-local.yml` działa wyłącznie na `localhost`. Nie łączy się z
-hostami aplikacyjnymi i nie modyfikuje plików źródłowych JCasC, Jenkinsfile ani
-plików `.example`. Tworzy w istniejącym repozytorium `reservations/jenkins`:
+Playbook `jenkins-local.yml` generuje konfigurację dla jednego środowiska
+wskazanego przez `-i`. Nie łączy się z hostem: używa połączenia lokalnego, ale
+odczytuje wszystkie wartości z hosta grupy `hardened_hosts`.
 
-- `secrets/secrets.properties`;
-- sześć prywatnych kluczy w `secrets/keys/`;
-- po trzy pliki `.env` dla `config/organizers` i `config/platform`.
+Mapowanie nazw środowisk:
 
-## Przygotowanie
+| Inventory | Jenkins |
+| --- | --- |
+| `dev` | `local` |
+| `staging` | `staging` |
+| `prod` | `production` |
 
-W WSL, w katalogu projektu `reservation-stack`:
+## Źródła danych
 
-```bash
-cp vars/jenkins-local.example.yml vars/jenkins-local.yml
-cp vars/jenkins-local-vault.local.example.yml vars/jenkins-local-vault.local.yml
-cp vars/jenkins-local-vault.staging.example.yml vars/jenkins-local-vault.staging.yml
-cp vars/jenkins-local-vault.production.example.yml vars/jenkins-local-vault.production.yml
-```
+Z inventory i `group_vars/all.yml` pobierane są:
 
-Stary `vars/jenkins-local-vault.yml` nie jest już wczytywany przez playbook.
-Pozostaje na liście `.gitignore` wyłącznie po to, aby podczas migracji nie doszło
-do przypadkowego dodania istniejącego pliku z sekretami do repozytorium.
+- host, port i użytkownik SSH;
+- domeny czterech frontendów;
+- katalogi wdrożeniowe;
+- porty backendów;
+- nazwa bazy, użytkownicy i schematy PostgreSQL;
+- hasła aplikacyjnych użytkowników PostgreSQL.
 
-Uzupełnij `vars/jenkins-local.yml`. Szczególnie uzupełnij staging, ponieważ jego
-obecne inventory zawiera placeholdery. Domyślna ścieżka docelowa to:
+Hasła użytkowników aplikacyjnych PostgreSQL są pobierane z istniejących
+zmiennych Vault inventory. Generator nie pobiera ani nie generuje sekretów JWT.
+Jeżeli aktualne pipeline'y nadal wymagają credentiali
+`ORGANIZERS_<ENV>_JWT_SECRET` i `PLATFORM_<ENV>_JWT_SECRET`, należy dodać
+je ręcznie podczas składania finalnego `secrets.properties`.
 
-```yaml
-jenkins_source_root: /mnt/d/projects/reservations/jenkins
-```
+Współdzielona konfiguracja znajduje się w:
 
-Dla każdego środowiska skonfiguruj osobne domeny frontendów organizers:
-`organizers_staff_domain`, `organizers_trainer_domain` i
-`organizers_client_domain`. Playbook generuje zgodne z JCasC zmienne
-`BINTURO_STAFF_APP_URL`, `BINTURO_TRAINER_APP_URL` oraz
-`BINTURO_CLIENT_APP_URL`. Generuje również trzy docelowe katalogi
-`STAFF_FRONTEND_DIR`, `TRAINER_FRONTEND_DIR` i `CLIENT_FRONTEND_DIR` oraz wspólny
-schemat użytkowników `BINTURO_USERS_SCHEMA`.
+    vars/jenkins-local.yml
 
-Porty `binturo_frontend_ports` należą do konfiguracji Caddy na hostach i nie są
-przekazywane do Jenkinsa. Pipeline wdraża statyczne buildy frontendów przez
-`rsync`; nie uruchamia dla nich osobnych procesów.
+Katalog wynikowy jest podany jawnie w `group_vars/all.yml`:
 
-Uzupełnij sekrety i prywatne klucze w trzech plikach Vault. Globalne hasło
-administratora Jenkins znajduje się w pliku `local`, ponieważ jest to konfiguracja
-lokalnie uruchamianej instancji Jenkins. Każdy plik zaszyfruj innym Vault ID i
-hasłem:
+    jenkins_output_dir: /mnt/d/projects/reservations/jenkins
 
-```bash
-ansible-vault encrypt --vault-id local@prompt \
-  vars/jenkins-local-vault.local.yml
-ansible-vault encrypt --vault-id staging@prompt \
-  vars/jenkins-local-vault.staging.yml
-ansible-vault encrypt --vault-id production@prompt \
-  vars/jenkins-local-vault.production.yml
-```
+Ponieważ Ansible działa w WSL, musi to być bezwzględna ścieżka linuksowa.
+W celu zmiany katalogu edytuj tę jedną wartość.
 
-Oba lokalne pliki są ignorowane przez Git. Nie zapisuj kluczy prywatnych ani
-haseł w plikach `.example`.
+Przygotowanie:
 
-## Uruchomienie
+    cp vars/jenkins-local.example.yml vars/jenkins-local.yml
 
-Pierwsze wygenerowanie:
+Hasło administratora Jenkins jest zapisane na stałe w generowanym fragmencie:
 
-```bash
-ansible-playbook jenkins-local.yml \
-  --vault-id local@prompt \
-  --vault-id staging@prompt \
-  --vault-id production@prompt \
-  --diff
-```
+    JENKINS_ADMIN_PASSWORD=password
 
-Sekretne zadania używają `no_log`, więc hasła i klucze nie pojawią się w diffie
-ani logu Ansible.
+## Klucz SSH Jenkins
 
-Domyślnie playbook nie nadpisuje istniejących plików runtime. Pozwala to uniknąć
-utraty ręcznie poprawionej konfiguracji. Aby świadomie odtworzyć wszystkie pliki
-na podstawie aktualnych zmiennych:
+`custom_admin_authorized_key_file` wskazuje klucz publiczny, np.:
 
-```bash
-ansible-playbook jenkins-local.yml \
-  --vault-id local@prompt \
-  --vault-id staging@prompt \
-  --vault-id production@prompt \
-  --extra-vars jenkins_local_overwrite_existing=true
-```
+    /home/user/.ssh/binturo_deploy.pub
 
-Po wykonaniu przejrzyj niesekretne pliki `jenkins/config/**/*.env`, a następnie
-uruchom Jenkins zgodnie z `D:\projects\reservations\JENKINS.md`, np. w PowerShell
-repozytorium `reservations`:
+Jenkins potrzebuje klucza prywatnego. Generator automatycznie usuwa końcówkę
+`.pub` i odczytuje:
 
-```powershell
-.\jenkins\local\run-jenkins.ps1 -InstallPlugins
-```
+    /home/user/.ssh/binturo_deploy
 
-## Zakres i bezpieczeństwo
+Ten sam klucz prywatny jest kopiowany do credentiali organizers i platformy.
+Jeżeli prywatny odpowiednik nie istnieje, playbook przerwie działanie.
 
-- Playbook jedynie przygotowuje lokalne pliki wejściowe Jenkinsa.
-- Nie uruchamia Jenkinsa i nie instaluje wtyczek.
-- Nie wykonuje deploymentu aplikacji.
-- PostgreSQL, JWT i klucze SSH są pobierane wyłącznie z trzech zaszyfrowanych
-  plików `vars/jenkins-local-vault.<środowisko>.yml`.
-- Vault ID `local`, `staging` i `production` pozwalają używać innego hasła dla
-  każdego środowiska. ID zapisane w nagłówku zaszyfrowanego pliku musi odpowiadać
-  ID przekazanemu przy uruchomieniu playbooka.
-- Hasła bazy w Jenkins muszą odpowiadać hasłom skonfigurowanym na właściwych
-  hostach.
-- JWT organizatorów i platformy muszą być różne i mieć co najmniej 32 znaki.
+## Uruchamianie
+
+Dev generuje środowisko Jenkins `local`:
+
+    ansible-playbook -i inventories/dev/hosts.yml jenkins-local.yml \
+      --vault-id dev@prompt \
+      --diff
+
+Staging:
+
+    ansible-playbook -i inventories/staging/hosts.yml jenkins-local.yml \
+      --vault-id staging@prompt \
+      --diff
+
+Produkcja:
+
+    ansible-playbook -i inventories/prod/hosts.yml jenkins-local.yml \
+      --vault-id prod@prompt \
+      --diff
+
+Playbook generuje dla wskazanego środowiska:
+
+    <jenkins_output_dir>/config/organizers/<environment>.env
+    <jenkins_output_dir>/config/platform/<environment>.env
+    <jenkins_output_dir>/secrets/fragments/<environment>.properties
+    <jenkins_output_dir>/secrets/keys/ORGANIZERS_<ENVIRONMENT>_SSH_KEY
+    <jenkins_output_dir>/secrets/keys/PLATFORM_<ENVIRONMENT>_SSH_KEY
+
+Generuje także współdzielony fragment:
+
+    <jenkins_output_dir>/secrets/fragments/shared.properties
+
+## Łączenie fragmentów sekretów
+
+Playbook celowo nie tworzy ani nie nadpisuje finalnego
+`<jenkins_output_dir>/secrets/secrets.properties`. Generuje natomiast
+dwa skrypty scalające:
+
+    <jenkins_output_dir>/secrets/merge-secrets.sh
+    <jenkins_output_dir>/secrets/merge-secrets.ps1
+
+Uruchomienie w WSL:
+
+    /mnt/d/projects/reservations/jenkins/secrets/merge-secrets.sh
+
+Uruchomienie w PowerShell:
+
+    & D:\projects\reservations\jenkins\secrets\merge-secrets.ps1
+
+Skrypty sprawdzają kolejno fragmenty `shared`, `local`,
+`staging` i `production`. Brak fragmentu powoduje ostrzeżenie,
+ale nie przerywa scalania. Jeżeli nie istnieje żaden fragment, skrypt kończy się
+błędem. Finalny plik jest zapisywany atomowo; wersja Bash nadaje mu uprawnienia
+`0600`.
+
+Wygenerowane fragmenty, finalny plik sekretów i prywatne klucze nie mogą być
+commitowane. Po ich połączeniu uruchom Jenkins:
+
+    .\jenkins\local\run-jenkins.ps1 -InstallPlugins

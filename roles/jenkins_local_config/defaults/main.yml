@@ -1,6 +1,10 @@
 ---
-jenkins_source_root: /mnt/d/projects/reservations/jenkins
 jenkins_local_overwrite_existing: false
+jenkins_ssh_private_key_file: >-
+  {{
+    (custom_admin_authorized_key_file | default(''))
+    | regex_replace('\.pub$', '')
+  }}
 
 jenkins_local_environment_names:
   - local
@@ -10,3 +14,8 @@ jenkins_local_environment_names:
 jenkins_local_application_names:
   - organizers
   - platform
+
+jenkins_environment_name_map:
+  dev: local
+  staging: staging
+  prod: production
