@@ -24,6 +24,25 @@ SELECT format(
   :'organizers_password'
 ) \gexec
 
+-- Application migrations grant schema privileges to the stable organizers
+-- group role. The backend logs in through the environment-specific app role.
+SELECT format(
+  'CREATE ROLE %I NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT',
+  :'legacy_organizers_user'
+)
+WHERE :'legacy_organizers_user' <> :'organizers_user'
+  AND NOT EXISTS (
+    SELECT FROM pg_roles WHERE rolname = :'legacy_organizers_user'
+  ) \gexec
+SELECT format('ALTER ROLE %I NOLOGIN', :'legacy_organizers_user')
+WHERE :'legacy_organizers_user' <> :'organizers_user' \gexec
+SELECT format(
+  'GRANT %I TO %I',
+  :'legacy_organizers_user',
+  :'organizers_user'
+)
+WHERE :'legacy_organizers_user' <> :'organizers_user' \gexec
+
 SELECT format(
   'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT PASSWORD %L',
   :'backup_user',
@@ -281,6 +300,7 @@ DO $bootstrap$
 DECLARE
   platform_role text := current_setting('binturo.platform_user');
   organizers_role text := current_setting('binturo.organizers_user');
+  organizers_group text := current_setting('binturo.legacy_organizers_user');
   target_schema text;
 BEGIN
   IF NOT has_database_privilege(platform_role, current_database(), 'CREATE') THEN
@@ -299,6 +319,24 @@ BEGIN
     RAISE EXCEPTION 'Organizers role % is a member of platform role %',
       organizers_role,
       platform_role;
+  END IF;
+
+  IF organizers_group <> organizers_role
+    AND NOT pg_has_role(organizers_role, organizers_group, 'MEMBER')
+  THEN
+    RAISE EXCEPTION 'Organizers login role % is not a member of group role %',
+      organizers_role,
+      organizers_group;
+  END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM pg_roles
+    WHERE rolname = organizers_group
+      AND rolcanlogin
+  ) THEN
+    RAISE EXCEPTION 'Organizers group role % unexpectedly permits login',
+      organizers_group;
   END IF;
 
   IF EXISTS (
