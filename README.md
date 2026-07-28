@@ -259,16 +259,16 @@ wykonaj procedurę na hoście produkcyjnym.
 Ansible tworzy:
 
 - bazę `binturo_dev` albo `binturo_prod`;
-- konto `binturo_platform` będące bezpośrednim właścicielem bazy,
+- konto `binturo_platform_app` będące bezpośrednim właścicielem bazy,
   schematów i obiektów, z prawem tworzenia schematów oraz wykonywania DDL/DML;
-- konto `binturo_organizers` bez praw DDL, z dostępem DML wyłącznie
+- konto `binturo_organizers_app` bez praw DDL, z dostępem DML wyłącznie
   do dozwolonych schematów;
 - konto `binturo_backup` z rolą `pg_read_all_data`;
 - początkowy schemat `binturo_platform`.
 
 Nazwa `binturo_platform_owner` jest zachowana jedynie jako zmienna
 migracyjna. Bootstrap przenosi własność starych obiektów na
-`binturo_platform` i odbiera członkostwo w dawnej roli.
+`binturo_platform_app` i odbiera członkostwo w dawnej roli.
 
 `binturo-platform` pozostaje właścicielem migracji oraz dynamicznych schematów.
 `binturo-organizers` korzysta z wielu schematów, ale ich tworzenie i aktualizacja
