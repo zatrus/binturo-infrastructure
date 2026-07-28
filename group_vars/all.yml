@@ -39,9 +39,11 @@ postgres_host_bind_address: 127.0.0.1
 postgres_host_port: 5432
 postgres_legacy_volume_name: "binturo_{{ environment_name }}_postgres_data"
 postgres_superuser: postgres
-postgres_owner_role: binturo_platform_owner
-postgres_platform_user: binturo_platform_app
-postgres_organizers_user: binturo_organizers_app
+postgres_legacy_owner_role: binturo_platform_owner
+postgres_legacy_platform_user: binturo_platform_app
+postgres_legacy_organizers_user: binturo_organizers_app
+postgres_platform_user: binturo_platform
+postgres_organizers_user: binturo_organizers
 postgres_backup_user: binturo_backup
 postgres_initial_schema: binturo_platform
 postgres_organizers_schema: binturo

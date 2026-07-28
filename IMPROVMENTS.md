@@ -87,7 +87,7 @@ Zakres:
 - dopuścić wyłącznie sieć kontenerową i wymagane role;
 - ustawić `password_encryption = scram-sha-256`;
 - odebrać zbędne uprawnienia do schematu `public`;
-- zweryfikować, że `binturo_organizers_app` nie ma `CREATE`, DDL ani członkostwa
+- zweryfikować, że `binturo_organizers` nie ma `CREATE`, DDL ani członkostwa
   w rolach uprzywilejowanych;
 - ustawić sensowne limity połączeń per rola;
 - dodać `statement_timeout`, `lock_timeout` i `idle_in_transaction_session_timeout`;
@@ -107,7 +107,7 @@ Zakres:
 - zweryfikować bezpieczne cytowanie identyfikatorów w `binturo-platform`.
 
 Kryterium akceptacji: automatyczny test tworzy schemat oraz tabelę po ustawieniu
-default privileges i potwierdza wymagany dostęp `binturo_organizers_app`.
+default privileges i potwierdza wymagany dostęp `binturo_organizers`.
 
 ### 7. Obsługa sekretów i rotacja haseł
 
