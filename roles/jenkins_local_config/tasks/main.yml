@@ -42,7 +42,9 @@
     that:
       - postgres_organizers_password | length > 0
       - postgres_platform_password | length > 0
-    fail_msg: "Complete application database passwords in the selected inventory Vault."
+      - organizers_jwt_secret | default('') | length >= 32
+      - platform_jwt_secret | default('') | length >= 32
+    fail_msg: "Complete application database passwords and separate JWT secrets of at least 32 characters in the selected inventory Vault."
   no_log: true
 
 - name: Validate authorized public key path
@@ -112,7 +114,7 @@
   ansible.builtin.template:
     src: environment-secrets.properties.j2
     dest: "{{ jenkins_output_dir }}/secrets/fragments/{{ jenkins_environment_name }}.properties"
-    force: "{{ jenkins_local_overwrite_existing | bool }}"
+    force: true
   no_log: true
 
 - name: Generate environment Jenkins SSH private keys
