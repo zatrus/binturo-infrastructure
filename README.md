@@ -254,6 +254,12 @@ wykonaj procedurę na hoście produkcyjnym.
    jednorazowej. `01-bootstrap.yml` nie jest ponownie wykonywany na skonfigurowanym
    hoście.
 
+## Wysyłka e-maili przez backendy
+
+Konfiguracja klientów `mock` i MailerSend, osobnych kluczy API backendów oraz
+plików generowanych dla Jenkins jest opisana w
+[docs/backend-email.md](docs/backend-email.md).
+
 ## PostgreSQL
 
 Ansible tworzy:

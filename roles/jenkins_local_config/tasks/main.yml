@@ -44,7 +44,13 @@
       - postgres_platform_password | length > 0
       - organizers_jwt_secret | default('') | length >= 32
       - platform_jwt_secret | default('') | length >= 32
-    fail_msg: "Complete application database passwords and separate JWT secrets of at least 32 characters in the selected inventory Vault."
+      - organizers_email_client in ['mock', 'mailersend']
+      - platform_email_client in ['mock', 'mailersend']
+      - (organizers_email_client != 'mailersend') or (organizers_mailersend_api_key | default('') | length > 0 and organizers_mailersend_from_email | default('') | length > 0)
+      - (platform_email_client != 'mailersend') or (platform_mailersend_api_key | default('') | length > 0 and platform_mailersend_from_email | default('') | length > 0)
+    fail_msg: >-
+      Complete database passwords, separate JWT secrets of at least 32
+      characters and MailerSend credentials when EMAIL_CLIENT=mailersend.
   no_log: true
 
 - name: Validate authorized public key path
@@ -132,7 +138,7 @@
   ansible.builtin.template:
     src: environment.env.j2
     dest: "{{ jenkins_output_dir }}/config/{{ item }}/{{ jenkins_environment_name }}.env"
-    force: "{{ jenkins_local_overwrite_existing | bool }}"
+    force: true
   loop: "{{ jenkins_local_application_names }}"
   loop_control:
     label: "{{ item }} / {{ jenkins_environment_name }}"
