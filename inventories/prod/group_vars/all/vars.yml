@@ -21,10 +21,10 @@ postgres_database: binturo_prod
 postgres_data_path: "{{ binturo_root }}/persistent/postgres"
 
 organizers_email_client: mailersend
-organizers_mailersend_from_email: "binturo.biuro@gmail.com"
+organizers_mailersend_from_email: "contact@binturo.com"
 organizers_mailersend_from_name: Binturo
 platform_email_client: mailersend
-platform_mailersend_from_email: "binturo.biuro@gmail.com"
+platform_mailersend_from_email: "contact@binturo.com"
 platform_mailersend_from_name: Binturo Platform
 
 prometheus_retention_time: 10d

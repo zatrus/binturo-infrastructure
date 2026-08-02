@@ -42,7 +42,7 @@ services:
       - postgres_backup_password
     volumes:
       - ./postgres-bootstrap.sh:/opt/binturo/bootstrap.sh:ro
-      - ./postgres-bootstrap.sql:/opt/binturo/bootstrap.sql:ro
+      - ./setup_db_roles.sql:/opt/binturo/setup_db_roles.sql:ro
     entrypoint: ["/bin/bash", "/opt/binturo/bootstrap.sh"]
     networks:
       - database
