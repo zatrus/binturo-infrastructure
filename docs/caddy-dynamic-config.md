@@ -86,6 +86,31 @@ Ręcznie dodawany plik należy najpierw zapisać pod nazwą tymczasową poza
 atomowo przenieść do katalogu importowanego i przeładować Caddy. Nie edytuj ręcznie
 plików zarządzanych przez Ansible.
 
+## Statyczna strona WWW
+
+Rola `directory_layout` przygotowuje katalog `/srv/binturo/apps/www`, a Caddy
+udostępnia go jako zwykły katalog plików statycznych. Ansible nie kopiuje ani nie
+usuwa jego zawartości. Pliki strony należy umieszczać na hoście jako użytkownik
+`binturo`.
+
+Domeny są jawnie określone w inventory przez `binturo_domains.www`:
+
+- dev: `www.binturo.warszawa`;
+- staging: `www-staging.binturo.com`;
+- prod: `www.binturo.com`.
+
+Przykładowe umieszczenie strony:
+
+```bash
+sudo -iu binturo
+cp -a /ścieżka/do/witryny/. /srv/binturo/apps/www/
+```
+
+Punktem wejścia powinien być `/srv/binturo/apps/www/index.html`. Konfiguracja
+znajduje się w `/etc/caddy/sites-enabled/05-www.caddy`, a log dostępu w
+`/var/log/caddy/www.log`. Przed użyciem domeny należy utworzyć odpowiedni rekord
+DNS; na staging i prod musi on wskazywać przez Cloudflare na właściwy host.
+
 ## Zastosowany hardening
 
 Konfiguracja bazowa:

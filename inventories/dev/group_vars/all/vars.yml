@@ -7,6 +7,7 @@ custom_admin_authorized_key_file: /home/gwerko/.ssh/binturo_ansible_dev.pub
 environment_name: dev
 
 binturo_domains:
+  www: www.binturo.warszawa
   platform: platform.binturo.warszawa
   organizers_staff: staff.binturo.warszawa
   organizers_trainer: trainer.binturo.warszawa
