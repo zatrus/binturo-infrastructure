@@ -41,7 +41,7 @@ postgres_legacy_volume_name: "binturo_{{ environment_name }}_postgres_data"
 postgres_superuser: postgres
 postgres_legacy_owner_role: binturo_platform_owner
 postgres_legacy_platform_user: binturo_platform
-postgres_legacy_organizers_user: binturo_organizers
+postgres_organizers_group_role: binturo_organizers
 postgres_platform_user: binturo_platform_app
 postgres_organizers_user: binturo_organizers_app
 postgres_backup_user: binturo_backup

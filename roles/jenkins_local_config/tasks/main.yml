@@ -27,6 +27,7 @@
       - postgres_host_port | int > 0
       - postgres_platform_user | length > 0
       - postgres_organizers_user | length > 0
+      - postgres_organizers_group_role | length > 0
       - postgres_initial_schema | length > 0
       - postgres_organizers_schema | length > 0
       - postgres_users_schema | length > 0
@@ -37,15 +38,56 @@
       - binturo_frontend_roots.values() | list | unique | length == 4
     fail_msg: "The selected inventory does not contain a complete Jenkins deployment configuration."
 
-- name: Validate inventory database secrets
+- name: Validate inventory database passwords
   ansible.builtin.assert:
     that:
-      - postgres_organizers_password | length > 0
-      - postgres_platform_password | length > 0
-      - organizers_jwt_secret | default('') | length >= 32
-      - platform_jwt_secret | default('') | length >= 32
-    fail_msg: "Complete application database passwords and separate JWT secrets of at least 32 characters in the selected inventory Vault."
+      - postgres_organizers_password | default('') | length > 0
+      - postgres_platform_password | default('') | length > 0
+    fail_msg: "Complete both application database passwords in the selected inventory Vault."
   no_log: true
+
+- name: Validate organizers JWT secret
+  ansible.builtin.assert:
+    that:
+      - organizers_jwt_secret | default('') | length >= 32
+    fail_msg: "Set vault_organizers_jwt_secret to at least 32 characters in the selected inventory Vault."
+  no_log: true
+
+- name: Validate platform JWT secret
+  ansible.builtin.assert:
+    that:
+      - platform_jwt_secret | default('') | length >= 32
+    fail_msg: "Set vault_platform_jwt_secret to at least 32 characters in the selected inventory Vault."
+  no_log: true
+
+- name: Validate email client names
+  ansible.builtin.assert:
+    that:
+      - organizers_email_client in ['mock', 'mailersend']
+      - platform_email_client in ['mock', 'mailersend']
+    fail_msg: "Set each *_email_client value to mock or mailersend."
+
+- name: Validate organizers MailerSend configuration
+  ansible.builtin.assert:
+    that:
+      - organizers_mailersend_api_key | default('') | length > 0
+      - organizers_mailersend_from_email | default('') | length > 0
+    fail_msg: >-
+      EMAIL_CLIENT=mailersend for organizers requires
+      vault_organizers_mailersend_api_key and organizers_mailersend_from_email.
+  no_log: true
+  when: organizers_email_client == 'mailersend'
+
+- name: Validate platform MailerSend configuration
+  ansible.builtin.assert:
+    that:
+      - platform_mailersend_api_key | default('') | length > 0
+      - platform_mailersend_from_email | default('') | length > 0
+    fail_msg: >-
+      EMAIL_CLIENT=mailersend for platform requires
+      vault_platform_mailersend_api_key and platform_mailersend_from_email.
+  no_log: true
+  when: platform_email_client == 'mailersend'
 
 - name: Validate authorized public key path
   ansible.builtin.assert:
@@ -132,7 +174,7 @@
   ansible.builtin.template:
     src: environment.env.j2
     dest: "{{ jenkins_output_dir }}/config/{{ item }}/{{ jenkins_environment_name }}.env"
-    force: "{{ jenkins_local_overwrite_existing | bool }}"
+    force: true
   loop: "{{ jenkins_local_application_names }}"
   loop_control:
     label: "{{ item }} / {{ jenkins_environment_name }}"

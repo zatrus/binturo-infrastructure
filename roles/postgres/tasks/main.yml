@@ -3,10 +3,15 @@
   ansible.builtin.assert:
     that:
       - postgres_platform_user != postgres_organizers_user
+      - postgres_organizers_group_role != postgres_organizers_user
+      - postgres_organizers_group_role != postgres_platform_user
       - postgres_platform_user != postgres_backup_user
       - postgres_organizers_user != postgres_backup_user
+      - (postgres_database | regex_search('^[a-z_][a-z0-9_]*$')) is not none
+      - postgres_database != 'postgres'
       - (postgres_platform_user | regex_search('^[a-z_][a-z0-9_]*$')) is not none
       - (postgres_organizers_user | regex_search('^[a-z_][a-z0-9_]*$')) is not none
+      - (postgres_organizers_group_role | regex_search('^[a-z_][a-z0-9_]*$')) is not none
       - (postgres_backup_user | regex_search('^[a-z_][a-z0-9_]*$')) is not none
       - (postgres_initial_schema | regex_search('^[a-z_][a-z0-9_]*$')) is not none
       - (postgres_organizers_schema | regex_search('^[a-z_][a-z0-9_]*$')) is not none
@@ -15,8 +20,9 @@
       - postgres_organizers_schema != 'public'
       - postgres_users_schema != 'public'
     fail_msg: >-
-      PostgreSQL application roles must be distinct and role/schema names must
-      be safe lowercase SQL identifiers outside the public schema.
+      PostgreSQL application roles must be distinct and database/role/schema
+      names must be safe lowercase SQL identifiers. The application database
+      cannot be postgres and application schemas cannot be public.
 
 - name: Check the PostgreSQL data directory
   ansible.builtin.stat:
@@ -144,13 +150,19 @@
   no_log: true
   when: binturo_user_available | default(false)
 
-- name: Install PostgreSQL bootstrap SQL
-  ansible.builtin.template:
-    src: bootstrap.sql.j2
-    dest: "{{ binturo_root }}/compose/postgres-bootstrap.sql"
+- name: Install PostgreSQL role and privilege setup SQL
+  ansible.builtin.copy:
+    src: setup_db_roles.sql
+    dest: "{{ binturo_root }}/compose/setup_db_roles.sql"
     owner: "{{ binturo_user }}"
     group: "{{ binturo_group }}"
     mode: "0640"
+  when: binturo_user_available | default(false)
+
+- name: Remove obsolete PostgreSQL bootstrap SQL filename
+  ansible.builtin.file:
+    path: "{{ binturo_root }}/compose/postgres-bootstrap.sql"
+    state: absent
   when: binturo_user_available | default(false)
 
 - name: Install PostgreSQL bootstrap script
@@ -295,7 +307,7 @@
     - binturo_user_available | default(false)
     - binturo_docker_available | default(false)
 
-- name: Reconcile PostgreSQL ownership, roles and schema privileges
+- name: Run setup_db_roles.sql on the inventory application database
   become: true
   become_user: "{{ binturo_user }}"
   ansible.builtin.command:
@@ -306,8 +318,8 @@
       run --rm postgres-bootstrap
   environment:
     DOCKER_HOST: "{{ docker_rootless_socket }}"
+  register: postgres_setup_db_roles
   changed_when: false
-  no_log: true
   when:
     - binturo_user_available | default(false)
     - binturo_docker_available | default(false)
