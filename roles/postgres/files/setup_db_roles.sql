@@ -237,7 +237,7 @@ $event_function$
 
 DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_registry_select;
 SELECT format(
-  'CREATE EVENT TRIGGER binturo_grant_organizers_registry_select ON ddl_command_end WHEN TAG IN (''CREATE TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_registry_select()',
+  'CREATE EVENT TRIGGER binturo_grant_organizers_registry_select ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_registry_select()',
   :'initial_schema'
 ) \gexec
 
