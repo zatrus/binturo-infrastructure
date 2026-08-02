@@ -79,10 +79,11 @@ powinno być jedną atomową operacją.
 
 Na czystej instalacji tabela `binturo_platform.organizers` nie istnieje jeszcze
 podczas `03-site`. Skrypt instaluje dlatego event trigger
-`binturo_grant_organizers_registry_select`. Po utworzeniu tej konkretnej tabeli
-przez migrację platformy trigger nadaje `SELECT` roli grupowej
-`binturo_organizers`. Trigger nie nadaje dostępu do żadnej innej tabeli schematu
-platformy.
+`binturo_grant_organizers_registry_select`. Reaguje on na `CREATE TABLE` oraz
+`ALTER TABLE`, ponieważ początkowa migracja tworzy tabelę `clubs`, a kolejna
+zmienia jej nazwę na `organizers`. Gdy docelowa tabela pojawi się pod właściwą
+nazwą, trigger nadaje `SELECT` roli grupowej `binturo_organizers`. Trigger nie
+nadaje dostępu do żadnej innej tabeli schematu platformy.
 
 ## Uruchamianie przez 03-site
 
