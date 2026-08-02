@@ -6,7 +6,8 @@ dla:
 
 - `binturo-platform`;
 - `binturo-organizers`;
-- czterech frontendów: platform oraz organizers `staff`, `trainer` i `client`;
+- statycznej strony WWW oraz czterech frontendów: platform i organizers
+  `staff`, `trainer`, `client`;
 - plików współdzielonych przez backendy.
 
 Osobna, przenośna konfiguracja panelu Semaphore UI dla Ubuntu i Windows znajduje
@@ -47,7 +48,8 @@ Konfiguracja jest podzielona na trzy etapy:
    katalogów aplikacji.
 
 Rola `python_venvs` tworzy środowiska `venv` w katalogach
-`apps/backend-organizers`, `apps/backend-platform` i `apps/frontend-platform`.
+`apps/backend-organizers`, `apps/backend-platform`, `apps/www` i
+`apps/frontend-platform`.
 Trzy frontendy organizers znajdują się w `apps/frontend-organizers/{staff,trainer,client}`.
 Domyślnie wykonuje
 `python3 -m venv venv`. Interpreter można zmienić, ustawiając np. w zmiennych

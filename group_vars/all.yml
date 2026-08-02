@@ -65,6 +65,8 @@ binturo_frontend_roots:
   organizers_trainer: "{{ binturo_root }}/apps/frontend-organizers/trainer"
   organizers_client: "{{ binturo_root }}/apps/frontend-organizers/client"
 
+binturo_www_root: "{{ binturo_root }}/apps/www"
+
 caddy_email: admin@example.com
 caddy_dynamic_config_dir: /etc/caddy/sites-enabled
 caddy_log_dir: /var/log/caddy

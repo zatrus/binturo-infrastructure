@@ -6,6 +6,7 @@ custom_admin_authorized_key_file: /home/gwerko/ovh/binturo-ovh-prod.pub
 environment_name: prod
 
 binturo_domains:
+  www: www.binturo.com
   platform: platform.binturo.com
   organizers_staff: staff.binturo.com
   organizers_trainer: trainer.binturo.com

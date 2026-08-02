@@ -6,6 +6,7 @@ custom_admin_authorized_key_file: /home/gwerko/ovh/binturo-ovh-staging.pub
 environment_name: staging
 
 binturo_domains:
+  www: www-staging.binturo.com
   platform: platform-staging.binturo.com
   organizers_staff: staff-staging.binturo.com
   organizers_trainer: trainer-staging.binturo.com

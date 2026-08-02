@@ -1,0 +1,20 @@
+# Managed by Ansible. Local changes will be overwritten.
+{{ binturo_domains.www }} {
+    bind {{ caddy_bind_addresses | join(' ') }}
+    import binturo_common
+
+    log {
+        output file {{ caddy_log_dir }}/www.log {
+            mode 0640
+            roll_at {{ caddy_log_roll_at }}
+            roll_size {{ caddy_log_roll_size }}
+            roll_local_time
+            roll_keep {{ caddy_log_roll_keep }}
+            roll_keep_for {{ caddy_log_roll_keep_for }}
+        }
+        format json
+    }
+
+    root * {{ binturo_www_root }}
+    file_server
+}
