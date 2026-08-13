@@ -1,0 +1,62 @@
+# Managed by Ansible. Local changes will be overwritten.
+{{ binturo_domains.organizers }} {
+    bind {{ caddy_bind_addresses | join(' ') }}
+    import binturo_common
+
+    log {
+        output file {{ caddy_log_dir }}/organizers.log {
+            mode 0640
+            roll_at {{ caddy_log_roll_at }}
+            roll_size {{ caddy_log_roll_size }}
+            roll_local_time
+            roll_keep {{ caddy_log_roll_keep }}
+            roll_keep_for {{ caddy_log_roll_keep_for }}
+        }
+        format json
+    }
+
+{% if caddy_tls_cloudflare_origin %}
+    @backend_api_from_cloudflare {
+        path /api /api/*
+        remote_ip {{ (caddy_cloudflare_ipv4_ranges + caddy_cloudflare_ipv6_ranges) | join(' ') }}
+    }
+
+    handle @backend_api_from_cloudflare {
+        reverse_proxy 127.0.0.1:{{ binturo_ports.organizers }} {
+            header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+            header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        }
+    }
+{% endif %}
+
+    @backend_api path /api /api/*
+    handle @backend_api {
+        reverse_proxy 127.0.0.1:{{ binturo_ports.organizers }} {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    redir /staff /staff/
+    redir /trainer /trainer/
+    redir /client /client/
+
+    handle_path /staff/* {
+        root * {{ binturo_frontend_roots.organizers_staff }}
+        try_files {path} /index.html
+        file_server
+    }
+
+    handle_path /trainer/* {
+        root * {{ binturo_frontend_roots.organizers_trainer }}
+        try_files {path} /index.html
+        file_server
+    }
+
+    handle_path /client/* {
+        root * {{ binturo_frontend_roots.organizers_client }}
+        try_files {path} /index.html
+        file_server
+    }
+
+    redir / /staff/login
+}

@@ -8,9 +8,7 @@ environment_name: staging
 binturo_domains:
   www: www-staging.binturo.com
   platform: platform-staging.binturo.com
-  organizers_staff: staff-staging.binturo.com
-  organizers_trainer: trainer-staging.binturo.com
-  organizers_client: app-staging.binturo.com
+  organizers: app-staging.binturo.com
 
 # Cloudflare terminates visitor TLS and validates this host with Origin CA.
 caddy_tls_internal: false

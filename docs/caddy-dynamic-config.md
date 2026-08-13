@@ -2,18 +2,14 @@
 
 Pliki witryn znajdują się w `/etc/caddy/sites-enabled`. Główny `Caddyfile` importuje
 wszystkie pliki z tego katalogu. Ansible zarządza plikami `10-platform.caddy` i
-`20-organizers-staff.caddy`, `21-organizers-trainer.caddy` i
-`22-organizers-client.caddy`; inne procesy mogą dodawać osobne pliki o innych
-nazwach.
+`20-organizers.caddy`; inne procesy mogą dodawać osobne pliki o innych nazwach.
 
 Każda publiczna witryna musi importować snippet `binturo_common`. Zapewnia on
 wspólne limity, nagłówki bezpieczeństwa oraz blokadę typowych plików wrażliwych.
 Logowanie dostępu jest konfigurowane osobno dla każdej witryny:
 
 - platforma: `/var/log/caddy/platform.log`;
-- organizers staff: `/var/log/caddy/organizers-staff.log`;
-- organizers trainer: `/var/log/caddy/organizers-trainer.log`;
-- organizers client: `/var/log/caddy/organizers-client.log`.
+- organizator (staff, trainer i client): `/var/log/caddy/organizers.log`.
 
 Logi mają format JSON i są rotowane przez Caddy codziennie o północy czasu
 lokalnego. Rotacja zachowuje maksymalnie 31 plików nie starszych niż 31 dni.
@@ -46,8 +42,8 @@ platform.example.com {
 }
 ```
 
-Każdy frontend `binturo-organizers` ma własną domenę. Przykład dla aplikacji
-client:
+Trzy frontendy `binturo-organizers` współdzielą jedną domenę i są rozdzielone
+prefiksami `/staff`, `/trainer` i `/client`:
 
 ```caddyfile
 app.example.com {
@@ -57,14 +53,26 @@ app.example.com {
     handle @backend_api {
         reverse_proxy 127.0.0.1:18102
     }
-    handle {
+    handle_path /staff/* {
+        root * /srv/binturo/apps/frontend-organizers/staff
+        try_files {path} /index.html
+        file_server
+    }
+    handle_path /trainer/* {
+        root * /srv/binturo/apps/frontend-organizers/trainer
+        try_files {path} /index.html
+        file_server
+    }
+    handle_path /client/* {
         root * /srv/binturo/apps/frontend-organizers/client
         try_files {path} /index.html
         file_server
     }
+    redir / /staff/login
 }
 ```
 
+`handle_path` usuwa prefiks aplikacji przed wyszukaniem pliku w jej katalogu.
 Prefiks `/api` nie jest usuwany. Backend musi więc obsługiwać ścieżki zaczynające się
 od `/api` i nasłuchiwać wyłącznie na `127.0.0.1`. Frontendy nie uruchamiają osobnych
 serwerów: proces budowania npm zapisuje gotowe pliki w katalogach wskazanych przez

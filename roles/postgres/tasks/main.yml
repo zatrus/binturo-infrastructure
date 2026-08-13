@@ -19,10 +19,13 @@
       - postgres_initial_schema != 'public'
       - postgres_organizers_schema != 'public'
       - postgres_users_schema != 'public'
+      - postgres_max_connections | int >= 1
+      - postgres_max_connections | int <= 262143
     fail_msg: >-
       PostgreSQL application roles must be distinct and database/role/schema
       names must be safe lowercase SQL identifiers. The application database
-      cannot be postgres and application schemas cannot be public.
+      cannot be postgres, application schemas cannot be public, and
+      postgres_max_connections must be between 1 and 262143.
 
 - name: Check the PostgreSQL data directory
   ansible.builtin.stat:
