@@ -12,10 +12,8 @@
       - caddy_bind_addresses | length > 0
       - binturo_domains.www | length > 0
       - binturo_domains.platform | length > 0
-      - binturo_domains.organizers_staff | length > 0
-      - binturo_domains.organizers_trainer | length > 0
-      - binturo_domains.organizers_client | length > 0
-      - binturo_domains.values() | list | unique | length == 5
+      - binturo_domains.organizers | length > 0
+      - binturo_domains.values() | list | unique | length == 3
       - not (caddy_tls_cloudflare_origin | bool) or
         ((caddy_cloudflare_ipv4_ranges + caddy_cloudflare_ipv6_ranges) | length > 0)
       - not (caddy_tls_cloudflare_origin | bool) or
@@ -134,7 +132,9 @@
     path: "{{ caddy_dynamic_config_dir }}/{{ item }}"
     state: absent
   loop:
-    - 20-organizers.caddy
+    - 20-organizers-staff.caddy
+    - 21-organizers-trainer.caddy
+    - 22-organizers-client.caddy
     - 23-organizers-client.caddy
   notify: Validate and reload Caddy
   when: not ansible_check_mode or binturo_caddy_available
@@ -152,21 +152,18 @@
       backend_port: "{{ binturo_ports.platform }}"
       frontend_root: "{{ binturo_frontend_roots.platform }}"
       log_filename: platform.log
-    - filename: 20-organizers-staff.caddy
-      domain: "{{ binturo_domains.organizers_staff }}"
-      backend_port: "{{ binturo_ports.organizers }}"
-      frontend_root: "{{ binturo_frontend_roots.organizers_staff }}"
-      log_filename: organizers-staff.log
-    - filename: 21-organizers-trainer.caddy
-      domain: "{{ binturo_domains.organizers_trainer }}"
-      backend_port: "{{ binturo_ports.organizers }}"
-      frontend_root: "{{ binturo_frontend_roots.organizers_trainer }}"
-      log_filename: organizers-trainer.log
-    - filename: 22-organizers-client.caddy
-      domain: "{{ binturo_domains.organizers_client }}"
-      backend_port: "{{ binturo_ports.organizers }}"
-      frontend_root: "{{ binturo_frontend_roots.organizers_client }}"
-      log_filename: organizers-client.log
+  notify:
+    - Validate and reload Caddy
+    - Restart Caddy after access log configuration change
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Install Binturo organizers site
+  ansible.builtin.template:
+    src: organizers-site.caddy.j2
+    dest: "{{ caddy_dynamic_config_dir }}/20-organizers.caddy"
+    owner: root
+    group: caddy
+    mode: "0640"
   notify:
     - Validate and reload Caddy
     - Restart Caddy after access log configuration change

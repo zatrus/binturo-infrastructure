@@ -294,10 +294,11 @@ import sites-enabled/*.caddy
 ```
 
 Ansible przygotowuje `/etc/caddy/sites-enabled` oraz generuje konfiguracje platformy
-i organizatorów. Dla każdej domeny ścieżki `/api` i `/api/*` są kierowane do
-właściwego backendu Python. Pozostały ruch jest obsługiwany jako statyczny build
-Reacta z katalogu frontendu, z fallbackiem SPA do `index.html`. Ścieżki określa
-`binturo_frontend_roots`. Każda publiczna witryna importuje snippet
+i organizatora. Frontendy organizatora współdzielą domenę i są dostępne pod
+`/staff`, `/trainer` i `/client`; wspólne `/api` i `/api/*` trafia do backendu
+organizatora. Platforma pozostaje na osobnej domenie. Ruch frontendowy jest
+obsługiwany jako statyczny build Reacta z fallbackiem SPA do `index.html`. Ścieżki
+określa `binturo_frontend_roots`. Każda publiczna witryna importuje snippet
 `binturo_common`, zawierający limity, nagłówki bezpieczeństwa, ochronę plików
 wrażliwych i ustawienia ACME.
 
@@ -306,9 +307,8 @@ korzysta z TLS-ALPN-01 na porcie 443. HTTP/3 jest wyłączone, aby nie otwierać
 `443/udp`. Szczegóły i przykłady znajdują się w
 [docs/caddy-dynamic-config.md](docs/caddy-dynamic-config.md).
 
-Logi dostępu Caddy mają format JSON i trafiają osobno do
-`/var/log/caddy/platform.log` oraz osobnych logów `organizers-staff.log`,
-`organizers-trainer.log` i `organizers-client.log`. Caddy obraca je
+Logi dostępu Caddy mają format JSON i trafiają do
+`/var/log/caddy/platform.log` oraz `/var/log/caddy/organizers.log`. Caddy obraca je
 codziennie o północy czasu lokalnego i zachowuje do 31 plików nie starszych niż
 31 dni. Logi operacyjne usługi pozostają w `journald`.
 

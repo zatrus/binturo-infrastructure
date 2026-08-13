@@ -331,9 +331,7 @@ czasu lokalnego. Ansible zachowuje maksymalnie 31 plików nie starszych niż 31 
 
 ```bash
 sudo tail -f /var/log/caddy/platform.log
-sudo tail -f /var/log/caddy/organizers-staff.log
-sudo tail -f /var/log/caddy/organizers-trainer.log
-sudo tail -f /var/log/caddy/organizers-client.log
+sudo tail -f /var/log/caddy/organizers.log
 sudo ls -lah /var/log/caddy
 ```
 
