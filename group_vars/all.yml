@@ -37,6 +37,8 @@ postgres_container_name: binturo-postgres
 postgres_port: 5432
 postgres_host_bind_address: 127.0.0.1
 postgres_host_port: 5432
+# Maximum number of concurrent PostgreSQL server connections. Override per inventory.
+postgres_max_connections: 100
 postgres_legacy_volume_name: "binturo_{{ environment_name }}_postgres_data"
 postgres_superuser: postgres
 postgres_legacy_owner_role: binturo_platform_owner

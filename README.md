@@ -284,6 +284,11 @@ należą do `binturo-platform`. Zasady nadawania praw bezpośrednio po utworzeni
 schematu opisuje
 [docs/postgresql-dynamic-schemas.md](docs/postgresql-dynamic-schemas.md).
 
+Limit równoczesnych połączeń serwera PostgreSQL określa zmienna Ansible
+`postgres_max_connections` (domyślnie `100`). Można ją nadpisać osobno w inventory
+danego środowiska; zmiana powoduje odtworzenie kontenera PostgreSQL bez usuwania
+danych z `postgres_data_path`.
+
 ## Caddy
 
 Konfiguracja bazowa `/etc/caddy/Caddyfile` importuje:

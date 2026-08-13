@@ -3,6 +3,10 @@ services:
     image: {{ postgres_image }}
     container_name: {{ postgres_container_name }}
     restart: always
+    command:
+      - postgres
+      - -c
+      - max_connections={{ postgres_max_connections }}
     environment:
       POSTGRES_USER: {{ postgres_superuser }}
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
