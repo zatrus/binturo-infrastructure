@@ -1,0 +1,111 @@
+---
+- name: Inspect GitHub deployment SSH private key
+  ansible.builtin.stat:
+    path: "{{ github_ssh_private_key_file }}"
+  register: github_ssh_private_key_stat
+  no_log: true
+
+- name: Validate GitHub Environment generator configuration
+  ansible.builtin.assert:
+    that:
+      - github_repository | default('') | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
+      - "'CHANGE_ME' not in github_repository"
+      - github_local_output_dir | default('') | length > 0
+      - (github_local_output_dir | regex_search('^/')) is not none
+      - github_environment_name | regex_search('^[A-Za-z0-9_.-]+$')
+      - ansible_host | string | length > 0
+      - ansible_port | int > 0
+      - ansible_port | int < 65536
+      - ansible_user | string | length > 0
+      - github_ssh_private_key_stat.stat.isreg | default(false)
+      - binturo_domains.platform | length > 0
+      - binturo_domains.organizers | length > 0
+      - binturo_ports.platform | int > 0
+      - binturo_ports.organizers | int > 0
+      - postgres_database | length > 0
+      - postgres_organizers_user | length > 0
+      - postgres_platform_user | length > 0
+      - postgres_organizers_user != postgres_platform_user
+      - postgres_organizers_password | default('') | length > 0
+      - postgres_platform_password | default('') | length > 0
+      - organizers_jwt_secret | default('') | length >= 32
+      - platform_jwt_secret | default('') | length >= 32
+      - organizers_jwt_secret != platform_jwt_secret
+    fail_msg: >-
+      Complete vars/github-local.yml and the selected inventory/Vault. Repository
+      must use owner/name format and the output path must be absolute in the
+      environment running Ansible.
+  no_log: true
+
+- name: Derive GitHub deployment values
+  ansible.builtin.set_fact:
+    github_environment_variables:
+      DEPLOY_SSH_HOST: "{{ ansible_host }}"
+      DEPLOY_SSH_PORT: "{{ ansible_port }}"
+      DEPLOY_SSH_USER: "{{ ansible_user }}"
+      DEPLOY_BACKEND_DIR: "{{ binturo_root }}/apps/backend-organizers"
+      DEPLOY_VENV_DIR: "{{ binturo_root }}/apps/backend-organizers/venv"
+      DEPLOY_STAFF_FRONTEND_DIR: "{{ binturo_frontend_roots.organizers_staff }}"
+      DEPLOY_TRAINER_FRONTEND_DIR: "{{ binturo_frontend_roots.organizers_trainer }}"
+      DEPLOY_CLIENT_FRONTEND_DIR: "{{ binturo_frontend_roots.organizers_client }}"
+      BINTURO_STAFF_APP_URL: "https://{{ binturo_domains.organizers }}/staff"
+      BINTURO_TRAINER_APP_URL: "https://{{ binturo_domains.organizers }}/trainer"
+      BINTURO_CLIENT_APP_URL: "https://{{ binturo_domains.organizers }}/client"
+      BINTURO_BACKEND_LISTEN_PORT: "{{ binturo_ports.organizers }}"
+      BINTURO_DB_HOST: "{{ postgres_host_bind_address }}"
+      BINTURO_DB_PORT: "{{ postgres_host_port }}"
+      BINTURO_DB_NAME: "{{ postgres_database }}"
+      BINTURO_DB_SCHEMA: "{{ postgres_organizers_schema }}"
+      BINTURO_PLATFORM_SCHEMA: "{{ postgres_initial_schema }}"
+      BINTURO_PLATFORM_APP_URL: "https://{{ binturo_domains.platform }}"
+      BINTURO_EMAIL_CLIENT: "{{ organizers_email_client }}"
+      BINTURO_MAILERSEND_FROM_EMAIL: "{{ organizers_mailersend_from_email }}"
+      BINTURO_MAILERSEND_FROM_NAME: "{{ organizers_mailersend_from_name }}"
+      DEPLOY_PLATFORM_BACKEND_DIR: "{{ binturo_root }}/apps/backend-platform"
+      DEPLOY_PLATFORM_FRONTEND_DIR: "{{ binturo_frontend_roots.platform }}"
+      DEPLOY_PLATFORM_VENV_DIR: "{{ binturo_root }}/apps/backend-platform/venv"
+      BINTURO_PLATFORM_API_URL: "https://{{ binturo_domains.platform }}"
+      BINTURO_PLATFORM_BACKEND_LISTEN_PORT: "{{ binturo_ports.platform }}"
+      BINTURO_PLATFORM_DB_HOST: "{{ postgres_host_bind_address }}"
+      BINTURO_PLATFORM_DB_PORT: "{{ postgres_host_port }}"
+      BINTURO_PLATFORM_DB_NAME: "{{ postgres_database }}"
+      BINTURO_PLATFORM_EMAIL_CLIENT: "{{ platform_email_client }}"
+      BINTURO_PLATFORM_MAILERSEND_FROM_EMAIL: "{{ platform_mailersend_from_email }}"
+      BINTURO_PLATFORM_MAILERSEND_FROM_NAME: "{{ platform_mailersend_from_name }}"
+    github_environment_secrets:
+      DEPLOY_SSH_PRIVATE_KEY: "{{ lookup('ansible.builtin.file', github_ssh_private_key_file) }}"
+      BINTURO_DB_USER: "{{ postgres_organizers_user }}"
+      BINTURO_DB_PASSWORD: "{{ postgres_organizers_password }}"
+      BINTURO_JWT_SECRET: "{{ organizers_jwt_secret }}"
+      BINTURO_MAILERSEND_API_KEY: "{{ organizers_mailersend_api_key | default('') }}"
+      BINTURO_PLATFORM_DB_USER: "{{ postgres_platform_user }}"
+      BINTURO_PLATFORM_DB_PASSWORD: "{{ postgres_platform_password }}"
+      BINTURO_PLATFORM_JWT_SECRET: "{{ platform_jwt_secret }}"
+      BINTURO_PLATFORM_MAILERSEND_API_KEY: "{{ platform_mailersend_api_key | default('') }}"
+  no_log: true
+
+- name: Create GitHub script output directory
+  ansible.builtin.file:
+    path: "{{ github_local_output_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Generate GitHub Environment configuration scripts
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ github_local_output_dir }}/configure-github-{{ github_environment_name }}.{{ item.extension }}"
+    mode: "0700"
+  loop:
+    - src: configure-github-environment.sh.j2
+      extension: sh
+    - src: configure-github-environment.ps1.j2
+      extension: ps1
+  no_log: true
+
+- name: Report generated GitHub scripts
+  ansible.builtin.debug:
+    msg:
+      - "Generated GitHub Environment scripts for {{ github_environment_name }}."
+      - "Repository: {{ github_repository }}"
+      - "Output: {{ github_local_output_dir }}"
+      - "Scripts contain Vault secrets; keep the directory private and delete scripts after use."

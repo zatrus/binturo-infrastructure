@@ -1,0 +1,11 @@
+---
+github_environment_name_map:
+  dev: dev
+  staging: staging
+  prod: production
+
+github_ssh_private_key_file: >-
+  {{
+    (custom_admin_authorized_key_file | default(''))
+    | regex_replace('\.pub$', '')
+  }}

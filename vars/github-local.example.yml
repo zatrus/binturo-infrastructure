@@ -1,0 +1,4 @@
+---
+# Copy this file to vars/github-local.yml and customize it locally.
+github_repository: CHANGE_ME/reservations
+github_local_output_dir: /mnt/d/projects/reservations/github-environments

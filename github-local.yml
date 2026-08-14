@@ -1,0 +1,31 @@
+---
+- name: Generate local GitHub Environment configuration scripts
+  hosts: hardened_hosts
+  connection: local
+  gather_facts: false
+  become: false
+
+  pre_tasks:
+    - name: Load shared public GitHub configuration
+      ansible.builtin.include_vars:
+        file: >-
+          {{
+            lookup(
+              'ansible.builtin.first_found',
+              {
+                'files': ['github-local.yml', 'github-local.example.yml'],
+                'paths': [playbook_dir ~ '/vars']
+              }
+            )
+          }}
+
+    - name: Map inventory environment to GitHub Environment
+      ansible.builtin.set_fact:
+        github_environment_name: >-
+          {{
+            github_environment_name_map[environment_name]
+            | default(environment_name)
+          }}
+
+  roles:
+    - github_local_config

@@ -262,6 +262,10 @@ Konfiguracja klientów `mock` i MailerSend, osobnych kluczy API backendów oraz
 plików generowanych dla Jenkins jest opisana w
 [docs/backend-email.md](docs/backend-email.md).
 
+Lokalny generator skryptów konfigurujących GitHub Environments na podstawie
+inventory i Vault jest opisany w
+[GITHUB_LOCAL_PREPARE.md](GITHUB_LOCAL_PREPARE.md).
+
 ## PostgreSQL
 
 Ansible tworzy:
