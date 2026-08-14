@@ -13,7 +13,9 @@
       - binturo_domains.www | length > 0
       - binturo_domains.platform | length > 0
       - binturo_domains.organizers | length > 0
-      - binturo_domains.values() | list | unique | length == 3
+      - binturo_domains.api | length > 0
+      - binturo_domains.values() | list | unique | length == 4
+      - caddy_redirect_domains | length > 0
       - not (caddy_tls_cloudflare_origin | bool) or
         ((caddy_cloudflare_ipv4_ranges + caddy_cloudflare_ipv6_ranges) | length > 0)
       - not (caddy_tls_cloudflare_origin | bool) or
@@ -125,6 +127,18 @@
     group: caddy
     mode: "0640"
   notify: Validate and reload Caddy
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Install unknown domain redirect site
+  ansible.builtin.template:
+    src: redirect-site.caddy.j2
+    dest: "{{ caddy_dynamic_config_dir }}/04-redirects.caddy"
+    owner: root
+    group: caddy
+    mode: "0640"
+  notify:
+    - Validate and reload Caddy
+    - Restart Caddy after access log configuration change
   when: not ansible_check_mode or binturo_caddy_available
 
 - name: Remove obsolete organizers site files

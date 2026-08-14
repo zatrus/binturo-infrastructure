@@ -5,10 +5,19 @@ custom_ssh_port: 2416
 custom_admin_authorized_key_file: /home/gwerko/ovh/binturo-ovh-prod.pub
 environment_name: prod
 
+postgres_max_connections:200
+organizers_db_pool_size: 30
+organizers_db_max_overflow: 140
+
 binturo_domains:
   www: www.binturo.com
   platform: platform.binturo.com
   organizers: app.binturo.com
+  api: api.binturo.com
+
+caddy_redirect_domains:
+  - binturo.com
+  - "*.binturo.com"
 
 # Cloudflare terminates visitor TLS and validates this host with Origin CA.
 caddy_tls_internal: false

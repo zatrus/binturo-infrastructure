@@ -312,6 +312,10 @@ korzysta z TLS-ALPN-01 na porcie 443. HTTP/3 jest wyłączone, aby nie otwierać
 `443/udp`. Szczegóły i przykłady znajdują się w
 [docs/caddy-dynamic-config.md](docs/caddy-dynamic-config.md).
 
+Instrukcja bezpiecznego połączenia z PostgreSQL przez tunel SSH oraz uruchamiania
+lokalnych testów wydajnościowych na dev, staging i prod znajduje się w
+[docs/remote-access-and-load-testing.md](docs/remote-access-and-load-testing.md).
+
 Logi dostępu Caddy mają format JSON i trafiają do
 `/var/log/caddy/platform.log` oraz `/var/log/caddy/organizers.log`. Caddy obraca je
 codziennie o północy czasu lokalnego i zachowuje do 31 plików nie starszych niż
