@@ -10,6 +10,11 @@ binturo_domains:
   www: www.binturo.warszawa
   platform: platform.binturo.warszawa
   organizers: app.binturo.warszawa
+  api: api.binturo.warszawa
+
+caddy_redirect_domains:
+  - binturo.warszawa
+  - "*.binturo.warszawa"
 
 # The .warszawa development names are not eligible for public ACME certificates.
 caddy_tls_internal: true

@@ -9,6 +9,10 @@ binturo_domains:
   www: www-staging.binturo.com
   platform: platform-staging.binturo.com
   organizers: app-staging.binturo.com
+  api: api-staging.binturo.com
+
+caddy_redirect_domains:
+  - "*.binturo.com"
 
 # Cloudflare terminates visitor TLS and validates this host with Origin CA.
 caddy_tls_internal: false

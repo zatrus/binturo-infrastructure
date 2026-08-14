@@ -1,15 +1,17 @@
 # Dynamiczna konfiguracja Caddy
 
 Pliki witryn znajdują się w `/etc/caddy/sites-enabled`. Główny `Caddyfile` importuje
-wszystkie pliki z tego katalogu. Ansible zarządza plikami `10-platform.caddy` i
-`20-organizers.caddy`; inne procesy mogą dodawać osobne pliki o innych nazwach.
+wszystkie pliki z tego katalogu. Ansible zarządza plikami `04-redirects.caddy`,
+`10-platform.caddy` i `20-organizers.caddy`; inne procesy mogą dodawać osobne pliki
+o innych nazwach.
 
 Każda publiczna witryna musi importować snippet `binturo_common`. Zapewnia on
 wspólne limity, nagłówki bezpieczeństwa oraz blokadę typowych plików wrażliwych.
 Logowanie dostępu jest konfigurowane osobno dla każdej witryny:
 
 - platforma: `/var/log/caddy/platform.log`;
-- organizator (staff, trainer i client): `/var/log/caddy/organizers.log`.
+- organizator (staff, trainer i client): `/var/log/caddy/organizers.log`;
+- przekierowania nieznanych domen: `/var/log/caddy/redirects.log`.
 
 Logi mają format JSON i są rotowane przez Caddy codziennie o północy czasu
 lokalnego. Rotacja zachowuje maksymalnie 31 plików nie starszych niż 31 dni.
@@ -156,3 +158,18 @@ Nie ustawiono globalnego `Content-Security-Policy`, ponieważ poprawna polityka 
 od zasobów, skryptów, dostawców logowania i połączeń używanych przez konkretny
 frontend. CSP należy dodać osobno w jego pliku witryny po przetestowaniu najpierw
 w trybie `Content-Security-Policy-Report-Only`.
+
+## Przekierowanie nieznanych domen
+
+`caddy_redirect_domains` określa adres apex i/lub wildcard obsługiwany przez dany
+host. Domena `www`, domena platformy i domena aplikacji organizatora mają własne
+vhosty. Zarezerwowana domena `api` zwraca 404, dopóki nie otrzyma własnej
+konfiguracji. Każda pozostała dopasowana domena otrzymuje trwałe przekierowanie
+HTTP 308 do domeny `www`, z zachowaniem ścieżki i query stringu.
+
+Przekierowanie działa tylko dla nazw, które faktycznie docierają do serwera. DNS
+musi więc zawierać rekord wildcard (np. `*.binturo.com`) wskazujący przez
+Cloudflare na właściwy host, a certyfikat Cloudflare Origin CA musi obejmować ten
+wildcard. Na staging wildcard `*.binturo.com` powinien być kierowany na staging
+tylko wtedy, gdy staging jest jedynym hostem docelowym tej strefy; w przeciwnym
+razie routing wildcard należy rozdzielić na poziomie DNS/proxy Cloudflare.
