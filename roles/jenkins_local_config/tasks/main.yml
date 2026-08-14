@@ -27,12 +27,10 @@
       - postgres_host_port | int > 0
       - postgres_platform_user | length > 0
       - postgres_organizers_user | length > 0
-      - postgres_organizers_group_role | length > 0
       - postgres_initial_schema | length > 0
       - postgres_organizers_schema | length > 0
       - postgres_users_schema | length > 0
-      - organizers_db_pool_size | int > 0
-      - organizers_db_max_overflow | int >= 0
+      - caddy_maintenance_dir | default('') | regex_search('^/[A-Za-z0-9_./-]+$')
       - binturo_domains.values() | list | unique | length == 4
       - binturo_ports.platform | int > 0
       - binturo_ports.organizers | int > 0

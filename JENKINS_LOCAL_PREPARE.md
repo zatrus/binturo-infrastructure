@@ -17,8 +17,10 @@ Mapowanie nazw środowisk:
 Z inventory i `group_vars/all.yml` pobierane są:
 
 - host, port i użytkownik SSH;
-- domeny czterech frontendów;
+- użytkownik systemowy, na którego joby przełączają się przez `sudo`;
+- domenę platformy i trzy konteksty ścieżek frontendów organizatora;
 - katalogi wdrożeniowe;
+- katalog markera trybu maintenance organizatora;
 - porty backendów;
 - nazwa bazy, użytkownicy i schematy PostgreSQL;
 - hasła aplikacyjnych użytkowników PostgreSQL.
@@ -89,6 +91,13 @@ Playbook generuje dla wskazanego środowiska:
     <jenkins_output_dir>/secrets/fragments/<environment>.properties
     <jenkins_output_dir>/secrets/keys/ORGANIZERS_<ENVIRONMENT>_SSH_KEY
     <jenkins_output_dir>/secrets/keys/PLATFORM_<ENVIRONMENT>_SSH_KEY
+
+Plik `config/organizers/<environment>.env` zawiera również
+`ORGANIZERS_<ENVIRONMENT>_MAINTENANCE_DIR`. Wartość pochodzi z
+`caddy_maintenance_dir` i musi wskazywać ten sam katalog, w którym Caddy sprawdza
+marker `organizers.enabled`. Korzystają z niej aktualne joby
+`binturo-organizers-maintenance-enable` i
+`binturo-organizers-maintenance-disable`.
 
 Generuje także współdzielony fragment:
 
