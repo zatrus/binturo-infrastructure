@@ -17,11 +17,11 @@
       - binturo_domains.values() | list | unique | length == 4
       - caddy_redirect_domains | length > 0
       - caddy_maintenance_dir | length > 0
-      - caddy_maintenance_marker | regex_search('^[A-Za-z0-9_.-]+$')
-      - caddy_maintenance_basic_auth_username | regex_search('^[A-Za-z0-9_.-]+$')
-      - caddy_maintenance_basic_auth_password_hash | regex_search('^\$2[aby]\$')
-      - caddy_maintenance_bypass_token | regex_search('^[A-Za-z0-9_-]{43,128}$')
-      - caddy_maintenance_cookie_name | regex_search('^[A-Za-z0-9_-]+$')
+      - (caddy_maintenance_marker | regex_search('^[A-Za-z0-9_.-]+$')) is not none
+      - (caddy_maintenance_basic_auth_username | regex_search('^[A-Za-z0-9_.-]+$')) is not none
+      - (caddy_maintenance_basic_auth_password_hash | regex_search('^\$2[aby]\$')) is not none
+      - (caddy_maintenance_bypass_token | regex_search('^[A-Za-z0-9_-]{43,128}$')) is not none
+      - (caddy_maintenance_cookie_name | regex_search('^[A-Za-z0-9_-]+$')) is not none
       - caddy_maintenance_cookie_max_age | int > 0
       - caddy_maintenance_retry_after | int > 0
       - not (caddy_tls_cloudflare_origin | bool) or

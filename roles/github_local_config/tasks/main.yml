@@ -8,11 +8,11 @@
 - name: Validate GitHub Environment generator configuration
   ansible.builtin.assert:
     that:
-      - github_repository | default('') | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
+      - (github_repository | default('') | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) is not none
       - "'CHANGE_ME' not in github_repository"
       - github_local_output_dir | default('') | length > 0
       - (github_local_output_dir | regex_search('^/')) is not none
-      - github_environment_name | regex_search('^[A-Za-z0-9_.-]+$')
+      - (github_environment_name | regex_search('^[A-Za-z0-9_.-]+$')) is not none
       - ansible_host | string | length > 0
       - ansible_port | int > 0
       - ansible_port | int < 65536
