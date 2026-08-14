@@ -17,6 +17,7 @@
       - ansible_port | int > 0
       - ansible_port | int < 65536
       - ansible_user | string | length > 0
+      - binturo_user | default('') | string | length > 0
       - github_ssh_private_key_stat.stat.isreg | default(false)
       - binturo_domains.platform | length > 0
       - binturo_domains.organizers | length > 0
@@ -43,6 +44,16 @@
       DEPLOY_SSH_HOST: "{{ ansible_host }}"
       DEPLOY_SSH_PORT: "{{ ansible_port }}"
       DEPLOY_SSH_USER: "{{ ansible_user }}"
+      # Konto SYSTEMOWE będące właścicielem katalogów aplikacji (uruchamia
+      # backendy) — NIE konto logowania SSH (to wciąż DEPLOY_SSH_USER wyżej).
+      # Nazwa użytkownika nie jest sekretem, więc żyje jako zwykła Environment
+      # variable, nie secret — ten sam model co Jenkins (SSH_SUDO_USER, patrz
+      # roles/jenkins_local_config), teraz też obsługiwany przez workflowy
+      # GitHub Actions (deploy-organizator.yml/deploy-platform.yml/
+      # start-backend.yml/stop-backend.yml, patrz GITHUB_WORKFLOWS.md →
+      # "Rozdzielenie DEPLOY_SSH_USER i DEPLOY_SSH_SUDO_USER").
+      DEPLOY_SSH_SUDO_USER: "{{ binturo_user }}"
+      DEPLOY_MAINTENANCE_DIR: "{{ caddy_maintenance_dir }}"
       DEPLOY_BACKEND_DIR: "{{ binturo_root }}/apps/backend-organizers"
       DEPLOY_VENV_DIR: "{{ binturo_root }}/apps/backend-organizers/venv"
       DEPLOY_STAFF_FRONTEND_DIR: "{{ binturo_frontend_roots.organizers_staff }}"

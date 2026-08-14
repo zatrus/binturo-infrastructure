@@ -266,6 +266,12 @@ Lokalny generator skryptów konfigurujących GitHub Environments na podstawie
 inventory i Vault jest opisany w
 [GITHUB_LOCAL_PREPARE.md](GITHUB_LOCAL_PREPARE.md).
 
+Tryb maintenance organizatora, dostęp operatorski podczas wdrożenia oraz kontrakt
+dla workflowów opisuje
+[docs/organizers-maintenance.md](docs/organizers-maintenance.md). Gotowy prompt do
+wdrożenia części workflowowej w repozytorium aplikacji znajduje się w
+[PROMPT_RESERVATIONS_MAINTENANCE.md](PROMPT_RESERVATIONS_MAINTENANCE.md).
+
 ## PostgreSQL
 
 Ansible tworzy:

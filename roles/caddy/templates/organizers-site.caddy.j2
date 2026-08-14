@@ -15,6 +15,50 @@
         format json
     }
 
+    # Operator access uses the same production origin as customers, so CORS,
+    # cookies and frontend routing are tested under real conditions. The raw
+    # bypass token never appears in the URL or access log.
+    route /__maintenance-access {
+        basic_auth {
+            {{ caddy_maintenance_basic_auth_username }} {{ caddy_maintenance_basic_auth_password_hash }}
+        }
+        header Set-Cookie "{{ caddy_maintenance_cookie_name }}={{ caddy_maintenance_bypass_token }}; Path=/; Max-Age={{ caddy_maintenance_cookie_max_age }}; Secure; HttpOnly; SameSite=Strict"
+        redir /staff/login 303
+    }
+
+    @maintenance_api {
+        path /api /api/*
+        not header Cookie *{{ caddy_maintenance_cookie_name }}={{ caddy_maintenance_bypass_token }}*
+        file {
+            root {{ caddy_maintenance_dir }}
+            try_files {{ caddy_maintenance_marker }}
+        }
+    }
+    handle @maintenance_api {
+        header Cache-Control "no-store"
+        header Content-Type "application/json; charset=utf-8"
+        header Retry-After "{{ caddy_maintenance_retry_after }}"
+        respond `{"detail":"Trwają prace serwisowe. Spróbuj ponownie za kilka minut."}` 503
+    }
+
+    @maintenance_frontend {
+        path /staff /staff/* /trainer /trainer/* /client /client/*
+        not header Cookie *{{ caddy_maintenance_cookie_name }}={{ caddy_maintenance_bypass_token }}*
+        file {
+            root {{ caddy_maintenance_dir }}
+            try_files {{ caddy_maintenance_marker }}
+        }
+    }
+    handle @maintenance_frontend {
+        header Cache-Control "no-store"
+        header Retry-After "{{ caddy_maintenance_retry_after }}"
+        root * {{ caddy_maintenance_dir }}
+        rewrite * /index.html
+        file_server {
+            status 503
+        }
+    }
+
 {% if caddy_tls_cloudflare_origin %}
     @backend_api_from_cloudflare {
         path /api /api/*

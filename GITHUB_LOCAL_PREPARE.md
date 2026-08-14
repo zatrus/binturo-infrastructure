@@ -163,15 +163,23 @@ Repository → Settings → Environments → production
 
 Sprawdź szczególnie:
 
-- `DEPLOY_SSH_HOST`, `DEPLOY_SSH_PORT` i `DEPLOY_SSH_USER`;
+- `DEPLOY_SSH_HOST`, `DEPLOY_SSH_PORT`, `DEPLOY_SSH_USER` i `DEPLOY_SSH_SUDO_USER`
+  (konto logowania SSH i konto systemowe właściciela aplikacji — patrz
+  "Model SSH/sudo" niżej — muszą być poprawnie rozróżnione);
 - katalogi `DEPLOY_*_DIR`;
 - URL-e `BINTURO_*_APP_URL`;
 - obecność `DEPLOY_SSH_PRIVATE_KEY`, sekretów DB i dwóch różnych sekretów JWT.
 
 ## Uruchamianie workflowów po konfiguracji
 
-Oba workflowy mają input typu `environment`. Wartość musi dokładnie odpowiadać
-nazwie utworzonej przez generator: `dev`, `staging` albo `production`.
+Wygenerowane Environment zasila cztery workflowy w repozytorium
+`reservations`: `deploy-organizator.yml`, `deploy-platform.yml` (opisane
+niżej) oraz ręcznie wyzwalane `start-backend.yml`/`stop-backend.yml` (start/stop
+już wdrożonego backendu bez pełnego deployu — przyjmują dodatkowo input
+`backend: organizers|platform`, patrz `GITHUB_WORKFLOWS.md` w tamtym
+repozytorium). Wszystkie cztery mają input typu `environment` — wartość musi
+dokładnie odpowiadać nazwie utworzonej przez generator: `dev`, `staging` albo
+`production`.
 
 Z GitHub CLI:
 
@@ -249,9 +257,24 @@ Najczęściej input workflow ma inną nazwę niż Environment, np. `prod` zamias
 
 ### Deploy zatrzymuje się na SSH lub `rsync: permission denied`
 
-Sprawdź poprawność hosta, portu i klucza oraz to, czy `DEPLOY_SSH_USER` ma prawa
-zapisu do katalogów `DEPLOY_*_DIR`. Workflow GitHub nie używa mechanizmu
-`SSH_SUDO_USER` dostępnego w Jenkinsie.
+Sprawdź poprawność hosta, portu i klucza. Workflowy GitHub Actions logują się
+jako `DEPLOY_SSH_USER`, ale wszystkie polecenia i transfery plików wykonują
+się jako `DEPLOY_SSH_SUDO_USER` przez `sudo -n -u` (ten sam model co lokalny
+Jenkins) — sprawdź więc:
+
+- czy `DEPLOY_SSH_SUDO_USER` jest ustawione i wskazuje istniejące konto
+  systemowe będące właścicielem katalogów `DEPLOY_*_DIR`;
+- czy na serwerze istnieje wpis `sudoers` pozwalający `DEPLOY_SSH_USER`
+  uruchomić bez hasła (`NOPASSWD`) `bash` i `rsync` jako
+  `DEPLOY_SSH_SUDO_USER` — przykładowy wpis i pełny opis w
+  `GITHUB_WORKFLOWS.md` w repozytorium `reservations`, sekcja "Wymagania
+  sudoers".
+
+Krok "Verify required variables, SSH connectivity and sudo access" na
+początku każdego workflowu (`deploy-organizator.yml`/`deploy-platform.yml`/
+`start-backend.yml`/`stop-backend.yml`) sprawdza dokładnie to połączenie
+(`sudo -n`) przed rozpoczęciem właściwego wdrożenia — jeśli deploy pada tu,
+komunikat błędu wskazuje, czy to sudoers, czy sama łączność SSH.
 
 ### Skrypt PowerShell jest blokowany przez execution policy
 
@@ -269,20 +292,36 @@ jest szyfrowaniem. Katalog ma tryb `0700`, a skrypty `0700`, ale na filesystemie
 Windows/WSL egzekwowanie praw POSIX zależy od sposobu montowania dysku. Nie
 commituj, nie wysyłaj i nie archiwizuj tych plików; po poprawnym wykonaniu usuń je.
 
-GitHub workflowy wykonują `rsync`/`scp` bez `sudo`, jako `DEPLOY_SSH_USER`.
-Generator ustawia tę wartość na `ansible_user` z inventory. Ten użytkownik musi
-mieć prawo zapisu do katalogów aplikacji. Jest to inny model niż lokalny Jenkins,
-który potrafi przełączyć się na `SSH_SUDO_USER`; jeśli konto administracyjne nie
-ma tych praw, sam generator skonfiguruje Environment poprawnie, ale deploy GitHub
-zawiedzie przy kopiowaniu plików.
+GitHub workflowy logują się przez SSH jako `DEPLOY_SSH_USER` (`ansible_user` z
+inventory), ale wszystkie polecenia na serwerze i transfery plików wykonują
+się jako `DEPLOY_SSH_SUDO_USER` (`binturo_user` z inventory — konto właściciela
+katalogów aplikacji) przez `sudo -n -u` — dokładnie ten sam model, jakiego
+lokalny Jenkins używa od dawna (`SSH_SUDO_USER`, patrz
+`roles/jenkins_local_config`). Wymaga to na serwerze wpisu `sudoers`
+pozwalającego `DEPLOY_SSH_USER` uruchomić bez hasła (`NOPASSWD`) `bash` i
+`rsync` jako `DEPLOY_SSH_SUDO_USER` — przykładowy wpis, pełny opis mechanizmu i
+lista kroków weryfikujących połączenie/sudo przed każdym deployem: patrz
+`GITHUB_WORKFLOWS.md` w repozytorium `reservations`, sekcje "Rozdzielenie
+DEPLOY_SSH_USER i DEPLOY_SSH_SUDO_USER" i "Wymagania sudoers". Bez poprawnego
+wpisu `sudoers` sam generator skonfiguruje Environment poprawnie, ale deploy
+GitHub zawiedzie już na kroku weryfikacji wstępnej (`sudo -n` kończy się
+błędem zamiast czekać na hasło).
 
 ## Co jest konfigurowane
 
-Wspólne dane SSH, katalogi obu aplikacji, domeny i URL-e trzech frontendów
-organizatora, porty backendów, parametry bazy, schematy oraz konfiguracja poczty
-są tworzone jako Environment variables. Klucz SSH, użytkownicy i hasła bazy,
+Wspólne dane SSH (w tym `DEPLOY_SSH_SUDO_USER` — konto systemowe właściciela
+aplikacji, patrz "Model SSH/sudo" wyżej), katalogi obu aplikacji, domeny i
+URL-e trzech frontendów organizatora, porty backendów, parametry bazy,
+schematy oraz konfiguracja poczty są tworzone jako Environment variables.
+`DEPLOY_SSH_SUDO_USER` jest zwykłą variable, NIE secret — nazwa konta
+systemowego nie jest wartością poufną. Klucz SSH, użytkownicy i hasła bazy,
 sekrety JWT oraz opcjonalne klucze MailerSend są tworzone jako Environment
 secrets.
+
+Generator ustawia również `DEPLOY_MAINTENANCE_DIR`. Workflowy aplikacyjne mogą
+tworzyć i usuwać w nim marker `organizers.enabled`, przełączając maintenance bez
+przeładowania Caddy. Szczegóły opisuje
+[docs/organizers-maintenance.md](docs/organizers-maintenance.md).
 
 Generator celowo nie ustawia `GITHUB_TOKEN`: GitHub tworzy go automatycznie dla
 każdego uruchomienia workflow.

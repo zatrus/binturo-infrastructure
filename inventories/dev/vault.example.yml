@@ -8,3 +8,5 @@ vault_platform_jwt_secret: CHANGE_ME_DIFFERENT_MINIMUM_32_RANDOM_CHARACTERS
 vault_organizers_mailersend_api_key: ""
 vault_platform_mailersend_api_key: ""
 vault_ansible_become_password: CHANGE_ME
+vault_caddy_maintenance_basic_auth_password_hash: '$2a$14$CHANGE_ME_USE_CADDY_HASH_PASSWORD'
+vault_caddy_maintenance_bypass_token: CHANGE_ME_43_OR_MORE_RANDOM_BASE64URL_CHARACTERS

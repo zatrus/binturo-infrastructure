@@ -16,6 +16,14 @@
       - binturo_domains.api | length > 0
       - binturo_domains.values() | list | unique | length == 4
       - caddy_redirect_domains | length > 0
+      - caddy_maintenance_dir | length > 0
+      - caddy_maintenance_marker | regex_search('^[A-Za-z0-9_.-]+$')
+      - caddy_maintenance_basic_auth_username | regex_search('^[A-Za-z0-9_.-]+$')
+      - caddy_maintenance_basic_auth_password_hash | regex_search('^\$2[aby]\$')
+      - caddy_maintenance_bypass_token | regex_search('^[A-Za-z0-9_-]{43,128}$')
+      - caddy_maintenance_cookie_name | regex_search('^[A-Za-z0-9_-]+$')
+      - caddy_maintenance_cookie_max_age | int > 0
+      - caddy_maintenance_retry_after | int > 0
       - not (caddy_tls_cloudflare_origin | bool) or
         ((caddy_cloudflare_ipv4_ranges + caddy_cloudflare_ipv6_ranges) | length > 0)
       - not (caddy_tls_cloudflare_origin | bool) or
@@ -70,6 +78,24 @@
     owner: caddy
     group: caddy
     mode: "0750"
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Create organizer maintenance directory
+  ansible.builtin.file:
+    path: "{{ caddy_maintenance_dir }}"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: caddy
+    mode: "0750"
+  when: not ansible_check_mode or binturo_caddy_available
+
+- name: Install organizer maintenance page
+  ansible.builtin.template:
+    src: maintenance.html.j2
+    dest: "{{ caddy_maintenance_dir }}/index.html"
+    owner: "{{ binturo_user }}"
+    group: caddy
+    mode: "0640"
   when: not ansible_check_mode or binturo_caddy_available
 
 - name: Create Cloudflare Origin CA certificate directory
@@ -181,6 +207,7 @@
   notify:
     - Validate and reload Caddy
     - Restart Caddy after access log configuration change
+  no_log: true
   when: not ansible_check_mode or binturo_caddy_available
 
 - name: Install Binturo static website
