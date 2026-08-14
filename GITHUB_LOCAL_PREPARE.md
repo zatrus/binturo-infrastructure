@@ -313,6 +313,9 @@ Wspólne dane SSH (w tym `DEPLOY_SSH_SUDO_USER` — konto systemowe właściciel
 aplikacji, patrz "Model SSH/sudo" wyżej), katalogi obu aplikacji, domeny i
 URL-e trzech frontendów organizatora, porty backendów, parametry bazy,
 schematy oraz konfiguracja poczty są tworzone jako Environment variables.
+Parametry `BINTURO_DB_POOL_SIZE` i `BINTURO_DB_MAX_OVERFLOW` pochodzą odpowiednio
+z `organizers_db_pool_size` i `organizers_db_max_overflow` w inventory i są
+używane przez workflow wdrożeniowy organizatora.
 `DEPLOY_SSH_SUDO_USER` jest zwykłą variable, NIE secret — nazwa konta
 systemowego nie jest wartością poufną. Klucz SSH, użytkownicy i hasła bazy,
 sekrety JWT oraz opcjonalne klucze MailerSend są tworzone jako Environment

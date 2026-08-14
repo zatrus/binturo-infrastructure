@@ -23,6 +23,7 @@ Z inventory i `group_vars/all.yml` pobierane są:
 - katalog markera trybu maintenance organizatora;
 - porty backendów;
 - nazwa bazy, użytkownicy i schematy PostgreSQL;
+- rozmiar podstawowej puli i maksymalny overflow połączeń backendu organizatora;
 - hasła aplikacyjnych użytkowników PostgreSQL.
 
 Hasła użytkowników aplikacyjnych PostgreSQL są pobierane z istniejących

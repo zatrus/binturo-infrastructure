@@ -23,6 +23,8 @@
       - binturo_domains.organizers | length > 0
       - binturo_ports.platform | int > 0
       - binturo_ports.organizers | int > 0
+      - organizers_db_pool_size | int > 0
+      - organizers_db_max_overflow | int >= 0
       - postgres_database | length > 0
       - postgres_organizers_user | length > 0
       - postgres_platform_user | length > 0
@@ -67,6 +69,8 @@
       BINTURO_DB_PORT: "{{ postgres_host_port }}"
       BINTURO_DB_NAME: "{{ postgres_database }}"
       BINTURO_DB_SCHEMA: "{{ postgres_organizers_schema }}"
+      BINTURO_DB_POOL_SIZE: "{{ organizers_db_pool_size }}"
+      BINTURO_DB_MAX_OVERFLOW: "{{ organizers_db_max_overflow }}"
       BINTURO_PLATFORM_SCHEMA: "{{ postgres_initial_schema }}"
       BINTURO_PLATFORM_APP_URL: "https://{{ binturo_domains.platform }}"
       BINTURO_EMAIL_CLIENT: "{{ organizers_email_client }}"
