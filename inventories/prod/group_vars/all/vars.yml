@@ -5,7 +5,7 @@ custom_ssh_port: 2416
 custom_admin_authorized_key_file: /home/gwerko/ovh/binturo-ovh-prod.pub
 environment_name: prod
 
-postgres_max_connections:200
+postgres_max_connections: 200
 organizers_db_pool_size: 30
 organizers_db_max_overflow: 140
 
