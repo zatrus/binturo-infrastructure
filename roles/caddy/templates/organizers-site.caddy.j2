@@ -19,7 +19,7 @@
     # cookies and frontend routing are tested under real conditions. The raw
     # bypass token never appears in the URL or access log.
     route /__maintenance-access {
-        basic_auth {
+        basicauth {
             {{ caddy_maintenance_basic_auth_username }} {{ caddy_maintenance_basic_auth_password_hash }}
         }
         header Set-Cookie "{{ caddy_maintenance_cookie_name }}={{ caddy_maintenance_bypass_token }}; Path=/; Max-Age={{ caddy_maintenance_cookie_max_age }}; Secure; HttpOnly; SameSite=Strict"
