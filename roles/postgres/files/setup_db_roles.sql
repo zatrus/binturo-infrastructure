@@ -200,6 +200,19 @@ BEGIN
       organizers_group
     );
   END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'organizer_billing_info'
+  ) THEN
+    EXECUTE format(
+      'GRANT INSERT, UPDATE ON %I.organizer_billing_info TO %I',
+      platform_schema,
+      organizers_group
+    );
+  END IF;
 END
 $bootstrap$;
 
@@ -238,6 +251,42 @@ $event_function$
 DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_registry_select;
 SELECT format(
   'CREATE EVENT TRIGGER binturo_grant_organizers_registry_select ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_registry_select()',
+  :'initial_schema'
+) \gexec
+
+-- The billing sync table is also created by a platform migration. Organizers
+-- may push billing data into it, but must not read or delete platform data.
+SELECT format(
+  $function_sql$
+CREATE OR REPLACE FUNCTION %I.binturo_grant_organizers_billing_write()
+RETURNS event_trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $event_function$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_event_trigger_ddl_commands() AS ddl_command
+    WHERE ddl_command.objid = pg_catalog.to_regclass(%L)::oid
+  ) THEN
+    EXECUTE %L;
+  END IF;
+END
+$event_function$
+  $function_sql$,
+  :'initial_schema',
+  format('%I.organizer_billing_info', :'initial_schema'),
+  format(
+    'GRANT INSERT, UPDATE ON %I.organizer_billing_info TO %I',
+    :'initial_schema',
+    :'organizers_group_role'
+  )
+) \gexec
+
+DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_billing_write;
+SELECT format(
+  'CREATE EVENT TRIGGER binturo_grant_organizers_billing_write ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_billing_write()',
   :'initial_schema'
 ) \gexec
 
@@ -414,6 +463,15 @@ BEGIN
     RAISE EXCEPTION 'Registry SELECT grant event trigger is missing or disabled';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT
+    FROM pg_event_trigger
+    WHERE evtname = 'binturo_grant_organizers_billing_write'
+      AND evtenabled <> 'D'
+  ) THEN
+    RAISE EXCEPTION 'Billing INSERT/UPDATE grant event trigger is missing or disabled';
+  END IF;
+
   IF EXISTS (
     SELECT
     FROM pg_roles
@@ -446,6 +504,53 @@ BEGIN
     RAISE EXCEPTION 'Organizers group role % lacks SELECT on %.organizers',
       organizers_group,
       platform_schema;
+  END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'organizer_billing_info'
+  ) THEN
+    IF NOT has_table_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'INSERT'
+    ) OR NOT has_table_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'UPDATE'
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % lacks INSERT/UPDATE on %.organizer_billing_info',
+        organizers_group,
+        platform_schema;
+    END IF;
+
+    IF has_table_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'SELECT'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'DELETE'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'TRUNCATE'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'REFERENCES'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'TRIGGER'
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % has excessive privileges on %.organizer_billing_info',
+        organizers_group,
+        platform_schema;
+    END IF;
   END IF;
 
   FOREACH target_schema IN ARRAY ARRAY[

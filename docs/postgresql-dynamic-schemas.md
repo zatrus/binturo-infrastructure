@@ -21,7 +21,10 @@ Ma:
 - SELECT, INSERT, UPDATE, DELETE na tabelach schematów organizatorów
   i współdzielonego schematu użytkowników;
 - USAGE, SELECT na ich sekwencjach;
-- tylko SELECT do tabeli binturo_platform.organizers.
+- tylko SELECT do tabeli binturo_platform.organizers;
+- tylko INSERT i UPDATE do tabeli
+  binturo_platform.organizer_billing_info, używanej przez push-sync danych
+  rozliczeniowych.
 
 Rola organizers nie otrzymuje CREATE na bazie ani schematach. Nie może
 wykonywać migracji, CREATE, ALTER, DROP ani samodzielnie zakładać schematów.
@@ -84,6 +87,12 @@ podczas `03-site`. Skrypt instaluje dlatego event trigger
 zmienia jej nazwę na `organizers`. Gdy docelowa tabela pojawi się pod właściwą
 nazwą, trigger nadaje `SELECT` roli grupowej `binturo_organizers`. Trigger nie
 nadaje dostępu do żadnej innej tabeli schematu platformy.
+
+Analogiczny event trigger `binturo_grant_organizers_billing_write` nadaje
+wyłącznie `INSERT, UPDATE` po utworzeniu lub zmianie tabeli
+`binturo_platform.organizer_billing_info`. Nie nadaje `SELECT`, `DELETE` ani
+żadnych praw DDL. Jeżeli tabela istnieje już podczas uruchomienia playbooka,
+bootstrap wykonuje ten sam grant bezpośrednio.
 
 ## Uruchamianie przez 03-site
 
