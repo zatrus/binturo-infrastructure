@@ -16,7 +16,7 @@ function Invoke-Gh {
     param([Parameter(Mandatory)][string[]]$Arguments)
     & gh @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "gh failed with exit code $LASTEXITCODE: gh $($Arguments -join ' ')"
+        throw "gh failed with exit code ${LASTEXITCODE}: gh $($Arguments -join ' ')"
     }
 }
 
