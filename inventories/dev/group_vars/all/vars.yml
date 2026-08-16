@@ -29,9 +29,25 @@ postgres_data_path: "{{ binturo_root }}/persistent/postgres"
 organizers_email_client: mock
 organizers_mailersend_from_email: ""
 organizers_mailersend_from_name: Binturo
+organizers_smtp_host: ""
+organizers_smtp_port: 587
+organizers_smtp_username: "{{ vault_organizers_smtp_username | default('') }}"
+organizers_smtp_password: "{{ vault_organizers_smtp_password | default('') }}"
+organizers_smtp_from_email: ""
+organizers_smtp_from_name: Binturo
+organizers_smtp_use_tls: true
+organizers_smtp_use_ssl: false
 platform_email_client: mock
 platform_mailersend_from_email: ""
 platform_mailersend_from_name: Binturo Platform
+platform_smtp_host: ""
+platform_smtp_port: 587
+platform_smtp_username: "{{ vault_platform_smtp_username | default('') }}"
+platform_smtp_password: "{{ vault_platform_smtp_password | default('') }}"
+platform_smtp_from_email: ""
+platform_smtp_from_name: Binturo Platform
+platform_smtp_use_tls: true
+platform_smtp_use_ssl: false
 
 prometheus_retention_time: 15d
 prometheus_retention_size: 10GB

@@ -28,12 +28,28 @@ caddy_cloudflare_origin_private_key: "{{ vault_cloudflare_origin_private_key }}"
 postgres_database: binturo_prod
 postgres_data_path: "{{ binturo_root }}/persistent/postgres"
 
-organizers_email_client: mailersend
+organizers_email_client: smtp
 organizers_mailersend_from_email: "contact@binturo.com"
 organizers_mailersend_from_name: Binturo
+organizers_smtp_host: "smtp.mailersend.net"
+organizers_smtp_port: 587
+organizers_smtp_username: "{{ vault_organizers_smtp_username | default('') }}"
+organizers_smtp_password: "{{ vault_organizers_smtp_password | default('') }}"
+organizers_smtp_from_email: "contact@binturo.com"
+organizers_smtp_from_name: Binturo
+organizers_smtp_use_tls: true
+organizers_smtp_use_ssl: false
 platform_email_client: mailersend
 platform_mailersend_from_email: "contact@binturo.com"
 platform_mailersend_from_name: Binturo Platform
+platform_smtp_host: "smtp.mailersend.net"
+platform_smtp_port: 587
+platform_smtp_username: "{{ vault_platform_smtp_username | default('') }}"
+platform_smtp_password: "{{ vault_platform_smtp_password | default('') }}"
+platform_smtp_from_email: "contact@binturo.com"
+platform_smtp_from_name: Binturo Platform
+platform_smtp_use_tls: true
+platform_smtp_use_ssl: false
 
 prometheus_retention_time: 10d
 prometheus_retention_size: 10GB
