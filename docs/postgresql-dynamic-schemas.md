@@ -21,7 +21,8 @@ Ma:
 - SELECT, INSERT, UPDATE, DELETE na tabelach schematów organizatorów
   i współdzielonego schematu użytkowników;
 - USAGE, SELECT na ich sekwencjach;
-- tylko SELECT do tabeli binturo_platform.organizers;
+- SELECT do tabeli binturo_platform.organizers oraz kolumnowy UPDATE wyłącznie
+  pól contact_phone, contact_email, street, city, postal_code i country;
 - tylko INSERT i UPDATE do tabeli
   binturo_platform.organizer_billing_info, używanej przez push-sync danych
   rozliczeniowych.
@@ -87,6 +88,10 @@ podczas `03-site`. Skrypt instaluje dlatego event trigger
 zmienia jej nazwę na `organizers`. Gdy docelowa tabela pojawi się pod właściwą
 nazwą, trigger nadaje `SELECT` roli grupowej `binturo_organizers`. Trigger nie
 nadaje dostępu do żadnej innej tabeli schematu platformy.
+
+Ten sam trigger nadaje kolumnowy `UPDATE` sześciu pól profilu kontaktowego
+tabeli `binturo_platform.organizers`. Czeka, aż wszystkie wymagane kolumny
+zostaną utworzone przez migrację, i nigdy nie nadaje `UPDATE` na całą tabelę.
 
 Analogiczny event trigger `binturo_grant_organizers_billing_write` nadaje
 wyłącznie `INSERT, UPDATE` po utworzeniu lub zmianie tabeli

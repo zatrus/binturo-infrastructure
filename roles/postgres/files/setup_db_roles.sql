@@ -186,7 +186,9 @@ SELECT format(
 DO $bootstrap$
 DECLARE
   platform_schema text := current_setting('binturo.initial_schema');
+  organizers_role text := current_setting('binturo.organizers_user');
   organizers_group text := current_setting('binturo.organizers_group_role');
+  organizers_columns text;
 BEGIN
   IF EXISTS (
     SELECT
@@ -194,11 +196,53 @@ BEGIN
     WHERE table_schema = platform_schema
       AND table_name = 'organizers'
   ) THEN
+    SELECT string_agg(format('%I', column_name), ', ' ORDER BY ordinal_position)
+    INTO organizers_columns
+    FROM information_schema.columns
+    WHERE table_schema = platform_schema
+      AND table_name = 'organizers';
+
+    IF organizers_columns IS NOT NULL THEN
+      EXECUTE format(
+        'REVOKE UPDATE (%s) ON %I.organizers FROM %I',
+        organizers_columns,
+        platform_schema,
+        organizers_role
+      );
+      EXECUTE format(
+        'REVOKE UPDATE (%s) ON %I.organizers FROM %I',
+        organizers_columns,
+        platform_schema,
+        organizers_group
+      );
+    END IF;
+
     EXECUTE format(
       'GRANT SELECT ON %I.organizers TO %I',
       platform_schema,
       organizers_group
     );
+
+    IF NOT EXISTS (
+      SELECT required.column_name
+      FROM (VALUES
+        ('contact_phone'), ('contact_email'), ('street'),
+        ('city'), ('postal_code'), ('country')
+      ) AS required(column_name)
+      WHERE NOT EXISTS (
+        SELECT
+        FROM information_schema.columns AS existing
+        WHERE existing.table_schema = platform_schema
+          AND existing.table_name = 'organizers'
+          AND existing.column_name = required.column_name
+      )
+    ) THEN
+      EXECUTE format(
+        'GRANT UPDATE (contact_phone, contact_email, street, city, postal_code, country) ON %I.organizers TO %I',
+        platform_schema,
+        organizers_group
+      );
+    END IF;
   END IF;
 
   IF EXISTS (
@@ -235,6 +279,19 @@ BEGIN
     WHERE ddl_command.objid = pg_catalog.to_regclass(%L)::oid
   ) THEN
     EXECUTE %L;
+    IF (
+      SELECT count(*)
+      FROM pg_catalog.pg_attribute AS attribute
+      WHERE attribute.attrelid = pg_catalog.to_regclass(%L)
+        AND attribute.attname = ANY (ARRAY[
+          'contact_phone', 'contact_email', 'street',
+          'city', 'postal_code', 'country'
+        ])
+        AND attribute.attnum > 0
+        AND NOT attribute.attisdropped
+    ) = 6 THEN
+      EXECUTE %L;
+    END IF;
   END IF;
 END
 $event_function$
@@ -243,6 +300,12 @@ $event_function$
   format('%I.organizers', :'initial_schema'),
   format(
     'GRANT SELECT ON %I.organizers TO %I',
+    :'initial_schema',
+    :'organizers_group_role'
+  ),
+  format('%I.organizers', :'initial_schema'),
+  format(
+    'GRANT UPDATE (contact_phone, contact_email, street, city, postal_code, country) ON %I.organizers TO %I',
     :'initial_schema',
     :'organizers_group_role'
   )
@@ -414,6 +477,7 @@ DECLARE
   organizers_role text := current_setting('binturo.organizers_user');
   organizers_group text := current_setting('binturo.organizers_group_role');
   platform_schema text := current_setting('binturo.initial_schema');
+  profile_column text;
   target_schema text;
 BEGIN
   IF NOT has_database_privilege(platform_role, current_database(), 'CREATE') THEN
@@ -504,6 +568,69 @@ BEGIN
     RAISE EXCEPTION 'Organizers group role % lacks SELECT on %.organizers',
       organizers_group,
       platform_schema;
+  END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'organizers'
+  ) AND NOT EXISTS (
+    SELECT required.column_name
+    FROM (VALUES
+      ('contact_phone'), ('contact_email'), ('street'),
+      ('city'), ('postal_code'), ('country')
+    ) AS required(column_name)
+    WHERE NOT EXISTS (
+      SELECT
+      FROM information_schema.columns AS existing
+      WHERE existing.table_schema = platform_schema
+        AND existing.table_name = 'organizers'
+        AND existing.column_name = required.column_name
+    )
+  ) THEN
+    FOREACH profile_column IN ARRAY ARRAY[
+      'contact_phone', 'contact_email', 'street',
+      'city', 'postal_code', 'country'
+    ]
+    LOOP
+      IF NOT has_column_privilege(
+        organizers_group,
+        format('%I.organizers', platform_schema),
+        profile_column,
+        'UPDATE'
+      ) THEN
+        RAISE EXCEPTION 'Organizers group role % lacks UPDATE on %.organizers column %',
+          organizers_group,
+          platform_schema,
+          profile_column;
+      END IF;
+    END LOOP;
+
+    IF has_table_privilege(
+      organizers_group,
+      format('%I.organizers', platform_schema),
+      'UPDATE'
+    ) OR EXISTS (
+      SELECT
+      FROM information_schema.columns AS disallowed
+      WHERE disallowed.table_schema = platform_schema
+        AND disallowed.table_name = 'organizers'
+        AND disallowed.column_name <> ALL (ARRAY[
+          'contact_phone', 'contact_email', 'street',
+          'city', 'postal_code', 'country'
+        ])
+        AND has_column_privilege(
+          organizers_group,
+          format('%I.organizers', platform_schema),
+          disallowed.column_name,
+          'UPDATE'
+        )
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % has excessive UPDATE privileges on %.organizers',
+        organizers_group,
+        platform_schema;
+    END IF;
   END IF;
 
   IF EXISTS (
