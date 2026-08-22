@@ -39,6 +39,7 @@ organizers_smtp_from_email: "contact@binturo.com"
 organizers_smtp_from_name: Binturo
 organizers_smtp_use_tls: true
 organizers_smtp_use_ssl: false
+organizers_smtp_routed_domains: ""
 platform_email_client: mailersend
 platform_mailersend_from_email: "contact@binturo.com"
 platform_mailersend_from_name: Binturo Platform
@@ -50,6 +51,7 @@ platform_smtp_from_email: "contact@binturo.com"
 platform_smtp_from_name: Binturo Platform
 platform_smtp_use_tls: true
 platform_smtp_use_ssl: false
+platform_smtp_routed_domains: ""
 
 prometheus_retention_time: 10d
 prometheus_retention_size: 10GB

@@ -82,6 +82,7 @@
       BINTURO_SMTP_FROM_NAME: "{{ organizers_smtp_from_name }}"
       BINTURO_SMTP_USE_TLS: "{{ organizers_smtp_use_tls | bool | lower }}"
       BINTURO_SMTP_USE_SSL: "{{ organizers_smtp_use_ssl | bool | lower }}"
+      BINTURO_SMTP_ROUTED_DOMAINS: "{{ organizers_smtp_routed_domains }}"
       DEPLOY_PLATFORM_BACKEND_DIR: "{{ binturo_root }}/apps/backend-platform"
       DEPLOY_PLATFORM_FRONTEND_DIR: "{{ binturo_frontend_roots.platform }}"
       DEPLOY_PLATFORM_VENV_DIR: "{{ binturo_root }}/apps/backend-platform/venv"
@@ -99,6 +100,7 @@
       BINTURO_PLATFORM_SMTP_FROM_NAME: "{{ platform_smtp_from_name }}"
       BINTURO_PLATFORM_SMTP_USE_TLS: "{{ platform_smtp_use_tls | bool | lower }}"
       BINTURO_PLATFORM_SMTP_USE_SSL: "{{ platform_smtp_use_ssl | bool | lower }}"
+      BINTURO_PLATFORM_SMTP_ROUTED_DOMAINS: "{{ platform_smtp_routed_domains }}"
     github_environment_secrets:
       DEPLOY_SSH_PRIVATE_KEY: "{{ lookup('ansible.builtin.file', github_ssh_private_key_file) }}"
       BINTURO_DB_USER: "{{ postgres_organizers_user }}"
@@ -118,9 +120,9 @@
 - name: Validate GitHub email client names
   ansible.builtin.assert:
     that:
-      - organizers_email_client in ['mock', 'mailersend', 'smtp']
-      - platform_email_client in ['mock', 'mailersend', 'smtp']
-    fail_msg: "Set each *_email_client value to mock, mailersend or smtp."
+      - organizers_email_client in ['mock', 'mailersend', 'smtp', 'domain_routed']
+      - platform_email_client in ['mock', 'mailersend', 'smtp', 'domain_routed']
+    fail_msg: "Set each *_email_client value to mock, mailersend, smtp or domain_routed."
 
 - name: Validate GitHub organizers MailerSend configuration
   ansible.builtin.assert:
@@ -150,7 +152,13 @@
       - organizers_smtp_from_name | default('') | length > 0
       - (organizers_smtp_use_tls | bool) != (organizers_smtp_use_ssl | bool)
   no_log: true
-  when: organizers_email_client == 'smtp'
+  when: organizers_email_client in ['smtp', 'domain_routed']
+
+- name: Validate GitHub organizers routed SMTP domains
+  ansible.builtin.assert:
+    that:
+      - organizers_smtp_routed_domains | default('') | trim | length > 0
+  when: organizers_email_client == 'domain_routed'
 
 - name: Validate GitHub platform SMTP configuration
   ansible.builtin.assert:
@@ -164,7 +172,13 @@
       - platform_smtp_from_name | default('') | length > 0
       - (platform_smtp_use_tls | bool) != (platform_smtp_use_ssl | bool)
   no_log: true
-  when: platform_email_client == 'smtp'
+  when: platform_email_client in ['smtp', 'domain_routed']
+
+- name: Validate GitHub platform routed SMTP domains
+  ansible.builtin.assert:
+    that:
+      - platform_smtp_routed_domains | default('') | trim | length > 0
+  when: platform_email_client == 'domain_routed'
 
 - name: Create GitHub script output directory
   ansible.builtin.file:

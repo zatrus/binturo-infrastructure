@@ -65,9 +65,9 @@
 - name: Validate email client names
   ansible.builtin.assert:
     that:
-      - organizers_email_client in ['mock', 'mailersend', 'smtp']
-      - platform_email_client in ['mock', 'mailersend', 'smtp']
-    fail_msg: "Set each *_email_client value to mock, mailersend or smtp."
+      - organizers_email_client in ['mock', 'mailersend', 'smtp', 'domain_routed']
+      - platform_email_client in ['mock', 'mailersend', 'smtp', 'domain_routed']
+    fail_msg: "Set each *_email_client value to mock, mailersend, smtp or domain_routed."
 
 - name: Validate organizers MailerSend configuration
   ansible.builtin.assert:
@@ -103,10 +103,17 @@
       - organizers_smtp_from_name | default('') | length > 0
       - (organizers_smtp_use_tls | bool) != (organizers_smtp_use_ssl | bool)
     fail_msg: >-
-      EMAIL_CLIENT=smtp for organizers requires host, port, username, password,
+      EMAIL_CLIENT=smtp/domain_routed for organizers requires host, port, username, password,
       sender address/name and exactly one transport mode: STARTTLS or implicit SSL.
   no_log: true
-  when: organizers_email_client == 'smtp'
+  when: organizers_email_client in ['smtp', 'domain_routed']
+
+- name: Validate organizers routed SMTP domains
+  ansible.builtin.assert:
+    that:
+      - organizers_smtp_routed_domains | default('') | trim | length > 0
+    fail_msg: "EMAIL_CLIENT=domain_routed for organizers requires organizers_smtp_routed_domains."
+  when: organizers_email_client == 'domain_routed'
 
 - name: Validate platform SMTP configuration
   ansible.builtin.assert:
@@ -120,10 +127,17 @@
       - platform_smtp_from_name | default('') | length > 0
       - (platform_smtp_use_tls | bool) != (platform_smtp_use_ssl | bool)
     fail_msg: >-
-      EMAIL_CLIENT=smtp for platform requires host, port, username, password,
+      EMAIL_CLIENT=smtp/domain_routed for platform requires host, port, username, password,
       sender address/name and exactly one transport mode: STARTTLS or implicit SSL.
   no_log: true
-  when: platform_email_client == 'smtp'
+  when: platform_email_client in ['smtp', 'domain_routed']
+
+- name: Validate platform routed SMTP domains
+  ansible.builtin.assert:
+    that:
+      - platform_smtp_routed_domains | default('') | trim | length > 0
+    fail_msg: "EMAIL_CLIENT=domain_routed for platform requires platform_smtp_routed_domains."
+  when: platform_email_client == 'domain_routed'
 
 - name: Validate authorized public key path
   ansible.builtin.assert:

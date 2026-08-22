@@ -18,6 +18,7 @@ organizers_smtp_from_email: ""
 organizers_smtp_from_name: Binturo
 organizers_smtp_use_tls: true
 organizers_smtp_use_ssl: false
+organizers_smtp_routed_domains: ""
 
 platform_email_client: mock
 platform_mailersend_from_email: ""
@@ -28,13 +29,16 @@ platform_smtp_from_email: ""
 platform_smtp_from_name: Binturo Platform
 platform_smtp_use_tls: true
 platform_smtp_use_ssl: false
+platform_smtp_routed_domains: ""
 ```
 
 Dozwolone wartości `*_email_client` to:
 
 - `mock` — wiadomości nie są wysyłane do zewnętrznego dostawcy;
 - `mailersend` — rzeczywista wysyłka przez MailerSend;
-- `smtp` — wysyłka przez wskazany serwer SMTP.
+- `smtp` — wysyłka przez wskazany serwer SMTP;
+- `domain_routed` — SMTP tylko dla odbiorców z domen wymienionych w
+  `*_smtp_routed_domains`, a klient `mock` dla pozostałych odbiorców.
 
 Przy `mailersend` adres `*_mailersend_from_email` musi należeć do domeny
 zweryfikowanej w MailerSend.
@@ -42,6 +46,8 @@ zweryfikowanej w MailerSend.
 Przy `smtp` należy podać host, port i dane nadawcy. Dokładnie jeden z
 parametrów `*_smtp_use_tls` (STARTTLS, zwykle port 587) oraz
 `*_smtp_use_ssl` (niejawny TLS, zwykle port 465) musi mieć wartość `true`.
+Klient `domain_routed` wymaga tego samego kompletu ustawień SMTP oraz niepustej,
+rozdzielonej przecinkami listy domen, np. `bemerken.uk,inna-domena.pl`.
 
 ## Sekrety
 
@@ -73,8 +79,9 @@ ORGANIZERS_DEV_MAILERSEND_FROM_NAME=Binturo
 ```
 
 Dla SMTP generator zapisuje również `SMTP_HOST`, `SMTP_PORT`,
-`SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`, `SMTP_USE_TLS` i `SMTP_USE_SSL` z prefiksem
-aplikacji i środowiska, na przykład `ORGANIZERS_DEV_SMTP_HOST`.
+`SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`, `SMTP_USE_TLS`, `SMTP_USE_SSL` i
+`SMTP_ROUTED_DOMAINS` z prefiksem aplikacji i środowiska, na przykład
+`ORGANIZERS_DEV_SMTP_HOST`.
 
 Klucze API trafiają do `secrets/fragments/<environment>.properties`:
 
@@ -95,7 +102,8 @@ Po ponownym uruchomieniu `jenkins-local.yml` należy wykonać wygenerowany skryp
 
 Playbook `github-local.yml` generuje skrypty, które ustawiają te same wartości
 w GitHub Environments. Jawne parametry SMTP są zapisywane jako zmienne, na
-przykład `BINTURO_SMTP_HOST` i `BINTURO_PLATFORM_SMTP_USE_TLS`. Login i hasło
+przykład `BINTURO_SMTP_HOST`, `BINTURO_SMTP_ROUTED_DOMAINS` i
+`BINTURO_PLATFORM_SMTP_USE_TLS`. Login i hasło
 są zapisywane jako sekrety:
 
 ```text
