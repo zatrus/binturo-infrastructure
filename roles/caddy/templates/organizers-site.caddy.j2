@@ -86,18 +86,30 @@
 
     handle_path /staff/* {
         root * {{ binturo_frontend_roots.organizers_staff }}
+        @staff_assets path /assets/*
+        header @staff_assets Cache-Control "public, max-age=31536000, immutable"
+        @staff_non_assets not path /assets/*
+        header @staff_non_assets Cache-Control "no-cache"
         try_files {path} /index.html
         file_server
     }
 
     handle_path /trainer/* {
         root * {{ binturo_frontend_roots.organizers_trainer }}
+        @trainer_assets path /assets/*
+        header @trainer_assets Cache-Control "public, max-age=31536000, immutable"
+        @trainer_non_assets not path /assets/*
+        header @trainer_non_assets Cache-Control "no-cache"
         try_files {path} /index.html
         file_server
     }
 
     handle_path /client/* {
         root * {{ binturo_frontend_roots.organizers_client }}
+        @client_assets path /assets/*
+        header @client_assets Cache-Control "public, max-age=31536000, immutable"
+        @client_non_assets not path /assets/*
+        header @client_non_assets Cache-Control "no-cache"
         try_files {path} /index.html
         file_server
     }
