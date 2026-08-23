@@ -265,6 +265,8 @@ plików generowanych dla Jenkins jest opisana w
 Lokalny generator skryptów konfigurujących GitHub Environments na podstawie
 inventory i Vault jest opisany w
 [GITHUB_LOCAL_PREPARE.md](GITHUB_LOCAL_PREPARE.md).
+Osobny generator dla workflowu wdrożeniowego landing page `binturo-www` opisuje
+[GITHUB_WWW_LOCAL_PREPARE.md](GITHUB_WWW_LOCAL_PREPARE.md).
 
 Tryb maintenance organizatora, dostęp operatorski podczas wdrożenia oraz kontrakt
 dla workflowów opisuje

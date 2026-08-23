@@ -1,0 +1,4 @@
+---
+# Copy this file to vars/github-www-local.yml and customize it locally.
+github_repository: zatrus/binturo-www
+github_local_output_dir: /mnt/d/projects/binturo-www/github-environments

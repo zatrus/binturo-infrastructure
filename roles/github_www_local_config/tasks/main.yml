@@ -1,0 +1,69 @@
+---
+- name: Inspect binturo-www deployment SSH private key
+  ansible.builtin.stat:
+    path: "{{ github_ssh_private_key_file }}"
+  register: github_www_ssh_private_key_stat
+  no_log: true
+
+- name: Validate binturo-www GitHub Environment generator configuration
+  ansible.builtin.assert:
+    that:
+      - (github_repository | default('') | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) is not none
+      - "'CHANGE_ME' not in github_repository"
+      - github_local_output_dir | default('') | length > 0
+      - (github_local_output_dir | regex_search('^/')) is not none
+      - (github_environment_name | regex_search('^[A-Za-z0-9_.-]+$')) is not none
+      - ansible_host | string | length > 0
+      - ansible_port | int > 0
+      - ansible_port | int < 65536
+      - ansible_user | string | length > 0
+      - binturo_user | default('') | string | length > 0
+      - binturo_www_root | default('') | string | length > 0
+      - binturo_domains.www | default('') | length > 0
+      - binturo_domains.organizers | default('') | length > 0
+      - github_www_ssh_private_key_stat.stat.isreg | default(false)
+    fail_msg: >-
+      Complete vars/github-www-local.yml and the selected inventory. Repository
+      must use owner/name format, the output path must be absolute in the
+      environment running Ansible, and the deployment private key must exist.
+  no_log: true
+
+- name: Derive binturo-www GitHub deployment values
+  ansible.builtin.set_fact:
+    github_environment_variables:
+      DEPLOY_SSH_HOST: "{{ ansible_host }}"
+      DEPLOY_SSH_PORT: "{{ ansible_port }}"
+      DEPLOY_SSH_USER: "{{ ansible_user }}"
+      DEPLOY_SSH_SUDO_USER: "{{ binturo_user }}"
+      DEPLOY_WWW_DIR: "{{ binturo_www_root }}"
+      BINTURO_WWW_URL: "https://{{ binturo_domains.www }}"
+      BINTURO_APP_URL: "https://{{ binturo_domains.organizers }}"
+    github_environment_secrets:
+      DEPLOY_SSH_PRIVATE_KEY: "{{ lookup('ansible.builtin.file', github_ssh_private_key_file) }}"
+  no_log: true
+
+- name: Create binturo-www GitHub script output directory
+  ansible.builtin.file:
+    path: "{{ github_local_output_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Generate binturo-www GitHub Environment configuration scripts
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/roles/github_local_config/templates/{{ item.src }}"
+    dest: "{{ github_local_output_dir }}/configure-github-www-{{ github_environment_name }}.{{ item.extension }}"
+    mode: "0700"
+  loop:
+    - src: configure-github-environment.sh.j2
+      extension: sh
+    - src: configure-github-environment.ps1.j2
+      extension: ps1
+  no_log: true
+
+- name: Report generated binturo-www GitHub scripts
+  ansible.builtin.debug:
+    msg:
+      - "Generated binturo-www GitHub Environment scripts for {{ github_environment_name }}."
+      - "Repository: {{ github_repository }}"
+      - "Output: {{ github_local_output_dir }}"
+      - "Scripts contain an SSH private key; delete them after use."

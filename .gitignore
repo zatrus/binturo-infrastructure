@@ -1,6 +1,7 @@
 .vault-password
 vars/jenkins-local.yml
 vars/github-local.yml
+vars/github-www-local.yml
 # Legacy single-vault file; no longer loaded, but keep ignored during migration.
 vars/jenkins-local-vault.yml
 vars/jenkins-local-vault.local.yml
