@@ -15,20 +15,6 @@
         format json
     }
 
-{% if caddy_tls_cloudflare_origin %}
-    @backend_api_from_cloudflare {
-        path /api /api/*
-        remote_ip {{ (caddy_cloudflare_ipv4_ranges + caddy_cloudflare_ipv6_ranges) | join(' ') }}
-    }
-
-    handle @backend_api_from_cloudflare {
-        reverse_proxy 127.0.0.1:{{ item.backend_port }} {
-            header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-            header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-        }
-    }
-{% endif %}
-
     @backend_api path /api /api/*
     handle @backend_api {
         reverse_proxy 127.0.0.1:{{ item.backend_port }} {

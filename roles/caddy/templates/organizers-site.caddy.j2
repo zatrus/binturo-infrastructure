@@ -59,19 +59,18 @@
         }
     }
 
-{% if caddy_tls_cloudflare_origin %}
-    @backend_api_from_cloudflare {
-        path /api /api/*
-        remote_ip {{ (caddy_cloudflare_ipv4_ranges + caddy_cloudflare_ipv6_ranges) | join(' ') }}
+    @stripe_webhook {
+        method POST
+        path /api/webhooks/stripe
     }
-
-    handle @backend_api_from_cloudflare {
+    handle @stripe_webhook {
+        request_body {
+            max_size 256KB
+        }
         reverse_proxy 127.0.0.1:{{ binturo_ports.organizers }} {
-            header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-            header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+            header_up X-Real-IP {remote_host}
         }
     }
-{% endif %}
 
     @backend_api path /api /api/*
     handle @backend_api {
