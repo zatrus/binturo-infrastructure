@@ -257,6 +257,19 @@ BEGIN
       organizers_group
     );
   END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'payment_provider_account_index'
+  ) THEN
+    EXECUTE format(
+      'GRANT SELECT, INSERT ON %I.payment_provider_account_index TO %I',
+      platform_schema,
+      organizers_group
+    );
+  END IF;
 END
 $bootstrap$;
 
@@ -350,6 +363,43 @@ $event_function$
 DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_billing_write;
 SELECT format(
   'CREATE EVENT TRIGGER binturo_grant_organizers_billing_write ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_billing_write()',
+  :'initial_schema'
+) \gexec
+
+-- Stripe Connect uses a narrow, immutable provider-account-to-organizer index
+-- owned by the platform. Organizers may insert and read mappings, but may not
+-- update or delete them. The table is created by a platform migration.
+SELECT format(
+  $function_sql$
+CREATE OR REPLACE FUNCTION %I.binturo_grant_organizers_payment_index_access()
+RETURNS event_trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $event_function$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_event_trigger_ddl_commands() AS ddl_command
+    WHERE ddl_command.objid = pg_catalog.to_regclass(%L)::oid
+  ) THEN
+    EXECUTE %L;
+  END IF;
+END
+$event_function$
+  $function_sql$,
+  :'initial_schema',
+  format('%I.payment_provider_account_index', :'initial_schema'),
+  format(
+    'GRANT SELECT, INSERT ON %I.payment_provider_account_index TO %I',
+    :'initial_schema',
+    :'organizers_group_role'
+  )
+) \gexec
+
+DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_payment_index_access;
+SELECT format(
+  'CREATE EVENT TRIGGER binturo_grant_organizers_payment_index_access ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_payment_index_access()',
   :'initial_schema'
 ) \gexec
 
@@ -536,6 +586,15 @@ BEGIN
     RAISE EXCEPTION 'Billing INSERT/UPDATE grant event trigger is missing or disabled';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT
+    FROM pg_event_trigger
+    WHERE evtname = 'binturo_grant_organizers_payment_index_access'
+      AND evtenabled <> 'D'
+  ) THEN
+    RAISE EXCEPTION 'Payment index SELECT/INSERT grant event trigger is missing or disabled';
+  END IF;
+
   IF EXISTS (
     SELECT
     FROM pg_roles
@@ -675,6 +734,53 @@ BEGIN
       'TRIGGER'
     ) THEN
       RAISE EXCEPTION 'Organizers group role % has excessive privileges on %.organizer_billing_info',
+      organizers_group,
+      platform_schema;
+    END IF;
+  END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'payment_provider_account_index'
+  ) THEN
+    IF NOT has_table_privilege(
+      organizers_group,
+      format('%I.payment_provider_account_index', platform_schema),
+      'SELECT'
+    ) OR NOT has_table_privilege(
+      organizers_group,
+      format('%I.payment_provider_account_index', platform_schema),
+      'INSERT'
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % lacks SELECT/INSERT on %.payment_provider_account_index',
+        organizers_group,
+        platform_schema;
+    END IF;
+
+    IF has_table_privilege(
+      organizers_group,
+      format('%I.payment_provider_account_index', platform_schema),
+      'UPDATE'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.payment_provider_account_index', platform_schema),
+      'DELETE'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.payment_provider_account_index', platform_schema),
+      'TRUNCATE'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.payment_provider_account_index', platform_schema),
+      'REFERENCES'
+    ) OR has_table_privilege(
+      organizers_group,
+      format('%I.payment_provider_account_index', platform_schema),
+      'TRIGGER'
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % has excessive privileges on %.payment_provider_account_index',
         organizers_group,
         platform_schema;
     END IF;

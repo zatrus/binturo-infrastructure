@@ -25,7 +25,10 @@ Ma:
   pól contact_phone, contact_email, street, city, postal_code i country;
 - tylko INSERT i UPDATE do tabeli
   binturo_platform.organizer_billing_info, używanej przez push-sync danych
-  rozliczeniowych.
+  rozliczeniowych;
+- tylko SELECT i INSERT do tabeli
+  binturo_platform.payment_provider_account_index, używanej do mapowania kont
+  Stripe Connect na organizatorów.
 
 Rola organizers nie otrzymuje CREATE na bazie ani schematach. Nie może
 wykonywać migracji, CREATE, ALTER, DROP ani samodzielnie zakładać schematów.
@@ -98,6 +101,12 @@ wyłącznie `INSERT, UPDATE` po utworzeniu lub zmianie tabeli
 `binturo_platform.organizer_billing_info`. Nie nadaje `SELECT`, `DELETE` ani
 żadnych praw DDL. Jeżeli tabela istnieje już podczas uruchomienia playbooka,
 bootstrap wykonuje ten sam grant bezpośrednio.
+
+Event trigger `binturo_grant_organizers_payment_index_access` nadaje wyłącznie
+`SELECT, INSERT` po utworzeniu lub zmianie tabeli
+`binturo_platform.payment_provider_account_index`. Rola organizatora nie
+otrzymuje na tej tabeli `UPDATE`, `DELETE` ani praw DDL. Dla istniejącej tabeli
+grant jest wykonywany bezpośrednio podczas każdego uruchomienia bootstrapu.
 
 ## Uruchamianie przez 03-site
 
