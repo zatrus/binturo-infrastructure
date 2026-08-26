@@ -6,6 +6,8 @@ vault_postgres_backup_password: CHANGE_ME
 vault_organizers_jwt_secret: CHANGE_ME_MINIMUM_32_RANDOM_CHARACTERS
 vault_platform_jwt_secret: CHANGE_ME_DIFFERENT_MINIMUM_32_RANDOM_CHARACTERS
 vault_organizers_mailersend_api_key: ""
+vault_organizers_stripe_secret_key: ""
+vault_organizers_stripe_webhook_secret: ""
 vault_platform_mailersend_api_key: ""
 vault_organizers_smtp_username: ""
 vault_organizers_smtp_password: ""

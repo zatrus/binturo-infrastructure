@@ -83,6 +83,7 @@
       BINTURO_SMTP_USE_TLS: "{{ organizers_smtp_use_tls | bool | lower }}"
       BINTURO_SMTP_USE_SSL: "{{ organizers_smtp_use_ssl | bool | lower }}"
       BINTURO_SMTP_ROUTED_DOMAINS: "{{ organizers_smtp_routed_domains }}"
+      BINTURO_STRIPE_CONNECT_COUNTRY: "{{ organizers_stripe_connect_country }}"
       DEPLOY_PLATFORM_BACKEND_DIR: "{{ binturo_root }}/apps/backend-platform"
       DEPLOY_PLATFORM_FRONTEND_DIR: "{{ binturo_frontend_roots.platform }}"
       DEPLOY_PLATFORM_VENV_DIR: "{{ binturo_root }}/apps/backend-platform/venv"
@@ -109,6 +110,8 @@
       BINTURO_MAILERSEND_API_KEY: "{{ organizers_mailersend_api_key | default('') }}"
       BINTURO_SMTP_USERNAME: "{{ organizers_smtp_username | default('') }}"
       BINTURO_SMTP_PASSWORD: "{{ organizers_smtp_password | default('') }}"
+      BINTURO_STRIPE_SECRET_KEY: "{{ organizers_stripe_secret_key | default('') }}"
+      BINTURO_STRIPE_WEBHOOK_SECRET: "{{ organizers_stripe_webhook_secret | default('') }}"
       BINTURO_PLATFORM_DB_USER: "{{ postgres_platform_user }}"
       BINTURO_PLATFORM_DB_PASSWORD: "{{ postgres_platform_password }}"
       BINTURO_PLATFORM_JWT_SECRET: "{{ platform_jwt_secret }}"
@@ -159,6 +162,18 @@
     that:
       - organizers_smtp_routed_domains | default('') | trim | length > 0
   when: organizers_email_client == 'domain_routed'
+
+- name: Validate GitHub organizers Stripe configuration
+  ansible.builtin.assert:
+    that:
+      - (organizers_stripe_connect_country | default('') | regex_search('^[A-Z]{2}$')) is not none
+      - >-
+        (organizers_stripe_secret_key | default('') | length == 0) ==
+        (organizers_stripe_webhook_secret | default('') | length == 0)
+    fail_msg: >-
+      organizers_stripe_connect_country must be a two-letter uppercase country
+      code, and Stripe secret key and webhook secret must both be set or both be empty.
+  no_log: true
 
 - name: Validate GitHub platform SMTP configuration
   ansible.builtin.assert:
