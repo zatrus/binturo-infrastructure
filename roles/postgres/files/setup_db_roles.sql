@@ -270,6 +270,32 @@ BEGIN
       organizers_group
     );
   END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'subscriptions'
+  ) THEN
+    EXECUTE format(
+      'GRANT SELECT ON %I.subscriptions TO %I',
+      platform_schema,
+      organizers_group
+    );
+  END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'subscription_plans'
+  ) THEN
+    EXECUTE format(
+      'GRANT SELECT ON %I.subscription_plans TO %I',
+      platform_schema,
+      organizers_group
+    );
+  END IF;
 END
 $bootstrap$;
 
@@ -400,6 +426,44 @@ $event_function$
 DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_payment_index_access;
 SELECT format(
   'CREATE EVENT TRIGGER binturo_grant_organizers_payment_index_access ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_payment_index_access()',
+  :'initial_schema'
+) \gexec
+
+-- The organizers staff app reads the current subscription and the plan
+-- catalogue. Writes remain exclusive to the platform backend.
+SELECT format(
+  $function_sql$
+CREATE OR REPLACE FUNCTION %I.binturo_grant_organizers_subscription_read()
+RETURNS event_trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $event_function$
+DECLARE
+  relation_name text;
+BEGIN
+  FOREACH relation_name IN ARRAY ARRAY[%L, %L]
+  LOOP
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_event_trigger_ddl_commands() AS ddl_command
+      WHERE ddl_command.objid = pg_catalog.to_regclass(relation_name)::oid
+    ) THEN
+      EXECUTE format('GRANT SELECT ON %%s TO %%I', relation_name, %L);
+    END IF;
+  END LOOP;
+END
+$event_function$
+  $function_sql$,
+  :'initial_schema',
+  format('%I.subscriptions', :'initial_schema'),
+  format('%I.subscription_plans', :'initial_schema'),
+  :'organizers_group_role'
+) \gexec
+
+DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_subscription_read;
+SELECT format(
+  'CREATE EVENT TRIGGER binturo_grant_organizers_subscription_read ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_subscription_read()',
   :'initial_schema'
 ) \gexec
 
@@ -595,6 +659,15 @@ BEGIN
     RAISE EXCEPTION 'Payment index SELECT/INSERT grant event trigger is missing or disabled';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT
+    FROM pg_event_trigger
+    WHERE evtname = 'binturo_grant_organizers_subscription_read'
+      AND evtenabled <> 'D'
+  ) THEN
+    RAISE EXCEPTION 'Subscription SELECT grant event trigger is missing or disabled';
+  END IF;
+
   IF EXISTS (
     SELECT
     FROM pg_roles
@@ -785,6 +858,45 @@ BEGIN
         platform_schema;
     END IF;
   END IF;
+
+  FOREACH target_schema IN ARRAY ARRAY['subscriptions', 'subscription_plans']
+  LOOP
+    IF EXISTS (
+      SELECT
+      FROM information_schema.tables
+      WHERE table_schema = platform_schema
+        AND table_name = target_schema
+    ) THEN
+      IF NOT has_table_privilege(
+        organizers_group,
+        format('%I.%I', platform_schema, target_schema),
+        'SELECT'
+      ) THEN
+        RAISE EXCEPTION 'Organizers group role % lacks SELECT on %.%',
+          organizers_group,
+          platform_schema,
+          target_schema;
+      END IF;
+
+      IF EXISTS (
+        SELECT
+        FROM unnest(ARRAY[
+          'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE',
+          'REFERENCES', 'TRIGGER'
+        ]) AS forbidden(privilege_name)
+        WHERE has_table_privilege(
+          organizers_group,
+          format('%I.%I', platform_schema, target_schema),
+          forbidden.privilege_name
+        )
+      ) THEN
+        RAISE EXCEPTION 'Organizers group role % has excessive privileges on %.%',
+          organizers_group,
+          platform_schema,
+          target_schema;
+      END IF;
+    END IF;
+  END LOOP;
 
   FOREACH target_schema IN ARRAY ARRAY[
     current_setting('binturo.users_schema'),
