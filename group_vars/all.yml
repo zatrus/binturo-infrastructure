@@ -57,8 +57,9 @@ organizers_db_max_overflow: 10
 
 # Optional Stripe Connect integration used by the organizers backend.
 organizers_stripe_connect_country: PL
-organizers_stripe_secret_key: "n/a"
-organizers_stripe_webhook_secret: "n/a"
+organizers_stripe_api_version: 2026-07-29.dahlia
+# Secret, webhook and publishable keys are environment-specific. Define them in
+# inventories/<environment>/group_vars/all instead of this higher-precedence file.
 
 binturo_ports:
   platform: 18101

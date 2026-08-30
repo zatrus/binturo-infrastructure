@@ -115,16 +115,47 @@
     fail_msg: "EMAIL_CLIENT=domain_routed for organizers requires organizers_smtp_routed_domains."
   when: organizers_email_client == 'domain_routed'
 
-- name: Validate organizers Stripe configuration
+- name: Validate organizers Stripe Connect country
   ansible.builtin.assert:
     that:
       - (organizers_stripe_connect_country | default('') | regex_search('^[A-Z]{2}$')) is not none
+    fail_msg: >-
+      organizers_stripe_connect_country must be a two-letter uppercase country code.
+
+- name: Validate organizers Stripe API version
+  ansible.builtin.assert:
+    that:
+      - >-
+        (organizers_stripe_api_version | default('') |
+        regex_search('^[0-9]{4}-[0-9]{2}-[0-9]{2}\.[a-z][a-z0-9_-]*$')) is not none
+    fail_msg: >-
+      organizers_stripe_api_version must use the YYYY-MM-DD.codename format.
+
+- name: Validate organizers Stripe publishable key
+  ansible.builtin.assert:
+    that:
+      - >-
+        (organizers_stripe_publishable_key | default('') | length == 0) or
+        (organizers_stripe_publishable_key | default('')).startswith('pk_test_') or
+        (organizers_stripe_publishable_key | default('')).startswith('pk_live_')
+    fail_msg: >-
+      organizers_stripe_publishable_key must be empty or use a pk_test_/pk_live_ prefix.
+
+- name: Validate organizers Stripe secret pair
+  ansible.builtin.assert:
+    that:
       - >-
         (organizers_stripe_secret_key | default('') | length == 0) ==
         (organizers_stripe_webhook_secret | default('') | length == 0)
+      - >-
+        (organizers_stripe_publishable_key | default('') | length == 0) or
+        (
+          (organizers_stripe_secret_key | default('') | length > 0) and
+          (organizers_stripe_webhook_secret | default('') | length > 0)
+        )
     fail_msg: >-
-      organizers_stripe_connect_country must be a two-letter uppercase country
-      code, and Stripe secret key and webhook secret must both be set or both be empty.
+      Stripe secret key and webhook secret must both be set or both be empty;
+      both are required when organizers_stripe_publishable_key is configured.
   no_log: true
 
 - name: Validate platform SMTP configuration

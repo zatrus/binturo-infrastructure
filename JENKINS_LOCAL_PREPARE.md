@@ -24,6 +24,8 @@ Z inventory i `group_vars/all.yml` pobierane są:
 - porty backendów;
 - nazwa bazy, użytkownicy i schematy PostgreSQL;
 - rozmiar podstawowej puli i maksymalny overflow połączeń backendu organizatora;
+- kraj konta Stripe Connect, wersję API Stripe Accounts v2 i opcjonalny klucz
+  publikowalny Stripe;
 - hasła aplikacyjnych użytkowników PostgreSQL.
 
 Hasła użytkowników aplikacyjnych PostgreSQL są pobierane z istniejących
@@ -99,6 +101,11 @@ Plik `config/organizers/<environment>.env` zawiera również
 marker `organizers.enabled`. Korzystają z niej aktualne joby
 `binturo-organizers-maintenance-enable` i
 `binturo-organizers-maintenance-disable`.
+
+Ten sam plik zawiera `ORGANIZERS_<ENVIRONMENT>_STRIPE_PUBLISHABLE_KEY`, którego
+wartość pochodzi z `organizers_stripe_publishable_key`. Klucz jest publiczny i
+nie trafia do `secrets.properties`; ustaw właściwe `pk_test_...` lub
+`pk_live_...` w inventory danego środowiska.
 
 Generuje także współdzielony fragment:
 

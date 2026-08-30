@@ -316,6 +316,12 @@ schematy oraz konfiguracja poczty są tworzone jako Environment variables.
 Parametry `BINTURO_DB_POOL_SIZE` i `BINTURO_DB_MAX_OVERFLOW` pochodzą odpowiednio
 z `organizers_db_pool_size` i `organizers_db_max_overflow` w inventory i są
 używane przez workflow wdrożeniowy organizatora.
+`BINTURO_STRIPE_API_VERSION` pochodzi z `organizers_stripe_api_version` i
+ustawia jawny nagłówek wersji API dla Stripe Accounts v2.
+`BINTURO_STRIPE_PUBLISHABLE_KEY` pochodzi z
+`organizers_stripe_publishable_key`. Jest zwykłą Environment variable, ponieważ
+klucz publikowalny Stripe jest przeznaczony do użycia w przeglądarce. Ustaw
+odpowiedni klucz `pk_test_...` lub `pk_live_...` w inventory danego środowiska.
 `DEPLOY_SSH_SUDO_USER` jest zwykłą variable, NIE secret — nazwa konta
 systemowego nie jest wartością poufną. Klucz SSH, użytkownicy i hasła bazy,
 sekrety JWT oraz opcjonalne klucze MailerSend są tworzone jako Environment
