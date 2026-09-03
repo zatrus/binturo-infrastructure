@@ -252,7 +252,7 @@ BEGIN
       AND table_name = 'organizer_billing_info'
   ) THEN
     EXECUTE format(
-      'GRANT INSERT, UPDATE ON %I.organizer_billing_info TO %I',
+      'GRANT SELECT (organizer_id), INSERT, UPDATE ON %I.organizer_billing_info TO %I',
       platform_schema,
       organizers_group
     );
@@ -419,7 +419,7 @@ $event_function$
   :'initial_schema',
   format('%I.organizer_billing_info', :'initial_schema'),
   format(
-    'GRANT INSERT, UPDATE ON %I.organizer_billing_info TO %I',
+    'GRANT SELECT (organizer_id), INSERT, UPDATE ON %I.organizer_billing_info TO %I',
     :'initial_schema',
     :'organizers_group_role'
   )
@@ -872,6 +872,17 @@ BEGIN
         platform_schema;
     END IF;
 
+    IF NOT has_column_privilege(
+      organizers_group,
+      format('%I.organizer_billing_info', platform_schema),
+      'organizer_id',
+      'SELECT'
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % lacks SELECT on %.organizer_billing_info.organizer_id',
+        organizers_group,
+        platform_schema;
+    END IF;
+
     IF has_table_privilege(
       organizers_group,
       format('%I.organizer_billing_info', platform_schema),
@@ -892,6 +903,18 @@ BEGIN
       organizers_group,
       format('%I.organizer_billing_info', platform_schema),
       'TRIGGER'
+    ) OR EXISTS (
+      SELECT
+      FROM information_schema.columns AS disallowed
+      WHERE disallowed.table_schema = platform_schema
+        AND disallowed.table_name = 'organizer_billing_info'
+        AND disallowed.column_name <> 'organizer_id'
+        AND has_column_privilege(
+          organizers_group,
+          format('%I.organizer_billing_info', platform_schema),
+          disallowed.column_name,
+          'SELECT'
+        )
     ) THEN
       RAISE EXCEPTION 'Organizers group role % has excessive privileges on %.organizer_billing_info',
       organizers_group,
