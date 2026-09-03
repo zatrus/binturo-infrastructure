@@ -65,6 +65,9 @@ platform_jwt_secret: "{{ vault_platform_jwt_secret }}"
 organizers_mailersend_api_key: "{{ vault_organizers_mailersend_api_key | default('') }}"
 organizers_stripe_secret_key: "{{ vault_organizers_stripe_secret_key | default('') }}"
 organizers_stripe_webhook_secret: "{{ vault_organizers_stripe_webhook_secret | default('') }}"
+platform_stripe_secret_key: "{{ vault_platform_stripe_secret_key | default('') }}"
+platform_stripe_webhook_secret: "{{ vault_platform_stripe_webhook_secret | default('') }}"
+binturo_internal_service_key: "{{ vault_binturo_internal_service_key | default('') }}"
 platform_mailersend_api_key: "{{ vault_platform_mailersend_api_key | default('') }}"
 
 # Password used by the SSH account for sudo/become. The value is stored in Vault.

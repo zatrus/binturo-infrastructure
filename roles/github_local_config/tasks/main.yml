@@ -114,12 +114,15 @@
       BINTURO_SMTP_PASSWORD: "{{ organizers_smtp_password | default('') }}"
       BINTURO_STRIPE_SECRET_KEY: "{{ organizers_stripe_secret_key | default('') }}"
       BINTURO_STRIPE_WEBHOOK_SECRET: "{{ organizers_stripe_webhook_secret | default('') }}"
+      BINTURO_INTERNAL_SERVICE_KEY: "{{ binturo_internal_service_key | default('') }}"
       BINTURO_PLATFORM_DB_USER: "{{ postgres_platform_user }}"
       BINTURO_PLATFORM_DB_PASSWORD: "{{ postgres_platform_password }}"
       BINTURO_PLATFORM_JWT_SECRET: "{{ platform_jwt_secret }}"
       BINTURO_PLATFORM_MAILERSEND_API_KEY: "{{ platform_mailersend_api_key | default('') }}"
       BINTURO_PLATFORM_SMTP_USERNAME: "{{ platform_smtp_username | default('') }}"
       BINTURO_PLATFORM_SMTP_PASSWORD: "{{ platform_smtp_password | default('') }}"
+      BINTURO_PLATFORM_STRIPE_SECRET_KEY: "{{ platform_stripe_secret_key | default('') }}"
+      BINTURO_PLATFORM_STRIPE_WEBHOOK_SECRET: "{{ platform_stripe_webhook_secret | default('') }}"
   no_log: true
 
 - name: Validate GitHub email client names
@@ -206,6 +209,21 @@
     fail_msg: >-
       Stripe secret key and webhook secret must both be set or both be empty;
       both are required when organizers_stripe_publishable_key is configured.
+  no_log: true
+
+- name: Validate GitHub platform subscription payment secrets
+  ansible.builtin.assert:
+    that:
+      - >-
+        (platform_stripe_secret_key | default('') | length == 0) ==
+        (platform_stripe_webhook_secret | default('') | length == 0)
+      - >-
+        (binturo_internal_service_key | default('') | length == 0) or
+        (binturo_internal_service_key | default('') | length >= 32)
+    fail_msg: >-
+      Platform Stripe secret key and webhook secret must both be set or both
+      be empty. binturo_internal_service_key must be empty or at least 32
+      characters long.
   no_log: true
 
 - name: Validate GitHub platform SMTP configuration

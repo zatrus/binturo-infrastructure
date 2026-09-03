@@ -158,6 +158,21 @@
       both are required when organizers_stripe_publishable_key is configured.
   no_log: true
 
+- name: Validate platform subscription payment secrets
+  ansible.builtin.assert:
+    that:
+      - >-
+        (platform_stripe_secret_key | default('') | length == 0) ==
+        (platform_stripe_webhook_secret | default('') | length == 0)
+      - >-
+        (binturo_internal_service_key | default('') | length == 0) or
+        (binturo_internal_service_key | default('') | length >= 32)
+    fail_msg: >-
+      Platform Stripe secret key and webhook secret must both be set or both
+      be empty. binturo_internal_service_key must be empty or at least 32
+      characters long.
+  no_log: true
+
 - name: Validate platform SMTP configuration
   ansible.builtin.assert:
     that:

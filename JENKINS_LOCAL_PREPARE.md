@@ -26,13 +26,15 @@ Z inventory i `group_vars/all.yml` pobierane są:
 - rozmiar podstawowej puli i maksymalny overflow połączeń backendu organizatora;
 - kraj konta Stripe Connect, wersję API Stripe Accounts v2 i opcjonalny klucz
   publikowalny Stripe;
-- hasła aplikacyjnych użytkowników PostgreSQL.
+- hasła aplikacyjnych użytkowników PostgreSQL;
+- sekrety Stripe konta platformy używanego do płatności za subskrypcje;
+- wspólny, co najmniej 32-znakowy klucz komunikacji organizatorzy–platforma.
 
-Hasła użytkowników aplikacyjnych PostgreSQL są pobierane z istniejących
-zmiennych Vault inventory. Generator nie pobiera ani nie generuje sekretów JWT.
-Jeżeli aktualne pipeline'y nadal wymagają credentiali
-`ORGANIZERS_<ENV>_JWT_SECRET` i `PLATFORM_<ENV>_JWT_SECRET`, należy dodać
-je ręcznie podczas składania finalnego `secrets.properties`.
+Sekrety są pobierane z istniejących zmiennych Vault inventory. Nowe płatności
+subskrypcyjne używają `vault_platform_stripe_secret_key`,
+`vault_platform_stripe_webhook_secret` i
+`vault_binturo_internal_service_key`. Ostatnia wartość jest celowo wpisywana
+do credentiali obu aplikacji, aby oba backendy używały tego samego klucza.
 
 Współdzielona konfiguracja znajduje się w:
 

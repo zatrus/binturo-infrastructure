@@ -70,7 +70,11 @@ github_local_output_dir: /mnt/d/projects/reservations/github-environments
 `vars/github-local.yml` jest ignorowany przez Git. Klucz prywatny jest pobierany
 z pliku odpowiadającego `custom_admin_authorized_key_file` po usunięciu `.pub`,
 tak samo jak w generatorze Jenkins. Pozostałe sekrety pochodzą z Vault wybranego
-inventory.
+inventory. Płatności za subskrypcje wymagają opcjonalnej pary
+`vault_platform_stripe_secret_key`/`vault_platform_stripe_webhook_secret` oraz
+wspólnego `vault_binturo_internal_service_key` (pustego albo mającego co
+najmniej 32 znaki). Generator zapisuje wspólny klucz jako
+`BINTURO_INTERNAL_SERVICE_KEY`, używany przez oba workflowy.
 
 ## Generowanie
 
