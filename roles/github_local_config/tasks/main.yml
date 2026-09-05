@@ -89,7 +89,7 @@
       DEPLOY_PLATFORM_BACKEND_DIR: "{{ binturo_root }}/apps/backend-platform"
       DEPLOY_PLATFORM_FRONTEND_DIR: "{{ binturo_frontend_roots.platform }}"
       DEPLOY_PLATFORM_VENV_DIR: "{{ binturo_root }}/apps/backend-platform/venv"
-      BINTURO_PLATFORM_API_URL: "https://{{ binturo_domains.platform }}"
+      BINTURO_PLATFORM_API_URL: "https://{{ binturo_domains.platform }}/api"
       BINTURO_PLATFORM_BACKEND_LISTEN_PORT: "{{ binturo_ports.platform }}"
       BINTURO_PLATFORM_DB_HOST: "{{ postgres_host_bind_address }}"
       BINTURO_PLATFORM_DB_PORT: "{{ postgres_host_port }}"

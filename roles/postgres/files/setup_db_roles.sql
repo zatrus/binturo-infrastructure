@@ -314,6 +314,19 @@ BEGIN
     SELECT
     FROM information_schema.tables
     WHERE table_schema = platform_schema
+      AND table_name = 'platform_settings'
+  ) THEN
+    EXECUTE format(
+      'GRANT SELECT ON %I.platform_settings TO %I',
+      platform_schema,
+      organizers_group
+    );
+  END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
       AND table_name = 'internal_messages'
   ) THEN
     EXECUTE format(
@@ -468,8 +481,9 @@ SELECT format(
   :'initial_schema'
 ) \gexec
 
--- The organizers staff app reads the current subscription and the plan
--- catalogue. Writes remain exclusive to the platform backend.
+-- The organizers staff app reads the current subscription, plan catalogue,
+-- payment history, and platform settings. Writes remain exclusive to the
+-- platform backend.
 SELECT format(
   $function_sql$
 CREATE OR REPLACE FUNCTION %I.binturo_grant_organizers_subscription_read()
@@ -481,7 +495,7 @@ AS $event_function$
 DECLARE
   relation_name text;
 BEGIN
-  FOREACH relation_name IN ARRAY ARRAY[%L, %L, %L]
+  FOREACH relation_name IN ARRAY ARRAY[%L, %L, %L, %L]
   LOOP
     IF EXISTS (
       SELECT 1
@@ -498,6 +512,7 @@ $event_function$
   format('%I.subscriptions', :'initial_schema'),
   format('%I.subscription_plans', :'initial_schema'),
   format('%I.subscription_payments', :'initial_schema'),
+  format('%I.platform_settings', :'initial_schema'),
   :'organizers_group_role'
 ) \gexec
 
