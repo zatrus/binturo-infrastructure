@@ -1,0 +1,90 @@
+---
+- name: Validate platform cron configuration
+  ansible.builtin.assert:
+    that:
+      - platform_cron_schedule.split() | length == 5
+      - platform_log_directory | string | length > 0
+      - platform_cron_log_file | string | length > 0
+      - platform_application_log_file | string | length > 0
+    fail_msg: Configure the platform cron schedule and log paths.
+
+- name: Install cron and logrotate
+  ansible.builtin.apt:
+    name:
+      - cron
+      - logrotate
+    state: present
+    update_cache: true
+
+- name: Create persistent platform log directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0750"
+  loop:
+    - "{{ platform_log_directory }}"
+    - "{{ platform_log_directory }}/archive"
+  when: binturo_user_available | default(false)
+
+- name: Configure the platform background job
+  ansible.builtin.cron:
+    name: Binturo platform notifications and client limits
+    user: "{{ binturo_user }}"
+    minute: "{{ platform_cron_schedule.split()[0] }}"
+    hour: "{{ platform_cron_schedule.split()[1] }}"
+    day: "{{ platform_cron_schedule.split()[2] }}"
+    month: "{{ platform_cron_schedule.split()[3] }}"
+    weekday: "{{ platform_cron_schedule.split()[4] }}"
+    job: >-
+      cd {{ binturo_root }}/apps/backend-platform/backend &&
+      {{ binturo_root }}/apps/backend-platform/venv/bin/python binturo_platform.py --run-cron
+      >> {{ platform_cron_log_file }} 2>&1
+    state: present
+  when: binturo_user_available | default(false)
+
+- name: Install platform logrotate policy
+  ansible.builtin.template:
+    src: platform-logrotate.j2
+    dest: /etc/logrotate.d/binturo-platform
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart platform log rotation timer
+
+- name: Install hourly platform log rotation service
+  ansible.builtin.template:
+    src: binturo-platform-logrotate.service.j2
+    dest: /etc/systemd/system/binturo-platform-logrotate.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart platform log rotation timer
+
+- name: Install hourly platform log rotation timer
+  ansible.builtin.template:
+    src: binturo-platform-logrotate.timer.j2
+    dest: /etc/systemd/system/binturo-platform-logrotate.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart platform log rotation timer
+
+- name: Apply pending platform log rotation changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start hourly platform log rotation
+  ansible.builtin.systemd_service:
+    name: binturo-platform-logrotate.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Enable and start cron
+  ansible.builtin.systemd_service:
+    name: cron.service
+    enabled: true
+    state: started
+  when: not ansible_check_mode

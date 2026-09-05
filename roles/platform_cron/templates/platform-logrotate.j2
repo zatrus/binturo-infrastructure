@@ -1,0 +1,11 @@
+{{ platform_application_log_file }} {{ platform_cron_log_file }} {
+    hourly
+    rotate -1
+    missingok
+    notifempty
+    copytruncate
+    dateext
+    dateformat -%Y%m%d-%H%M%S
+    olddir {{ platform_log_directory }}/archive
+    su {{ binturo_user }} {{ binturo_group }}
+}

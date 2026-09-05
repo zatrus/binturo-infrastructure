@@ -1,0 +1,14 @@
+[Unit]
+Description=Rotate Binturo Platform logs
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate --state /var/lib/logrotate/binturo-platform.status /etc/logrotate.d/binturo-platform
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths={{ platform_log_directory }} {{ binturo_root }}/apps/backend-platform /var/lib/logrotate

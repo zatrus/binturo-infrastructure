@@ -10,5 +10,6 @@
     - python_venvs
     - postgres
     - backend_services
+    - platform_cron
     - caddy
     - monitoring

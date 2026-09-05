@@ -1,0 +1,12 @@
+[Unit]
+Description=Rotate Binturo Platform logs hourly
+
+[Timer]
+# Half past every hour avoids rotating cron.log exactly when the two-hour job starts.
+OnCalendar=*-*-* *:30:00
+Persistent=true
+AccuracySec=1min
+Unit=binturo-platform-logrotate.service
+
+[Install]
+WantedBy=timers.target

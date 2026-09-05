@@ -21,6 +21,12 @@ binturo_gid: 1500
 binturo_root: /srv/binturo
 binturo_timezone: Europe/Warsaw
 
+# Platform background jobs and persistent logs.
+platform_cron_schedule: "0 */2 * * *"
+platform_log_directory: "{{ binturo_root }}/logs/backend-platform"
+platform_cron_log_file: "{{ platform_log_directory }}/cron.log"
+platform_application_log_file: "{{ binturo_root }}/apps/backend-platform/binturo_platform.log"
+
 # Local output directory used by jenkins-local.yml.
 jenkins_output_dir: /mnt/d/projects/reservations-platform/jenkins
 
