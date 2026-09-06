@@ -25,6 +25,8 @@
       - binturo_ports.organizers | int > 0
       - organizers_db_pool_size | int > 0
       - organizers_db_max_overflow | int >= 0
+      - organizers_moderation_provider in ['mock', 'openai']
+      - organizers_moderation_provider != 'openai' or (organizers_openai_api_key | default('') | length > 0)
       - postgres_database | length > 0
       - postgres_organizers_user | length > 0
       - postgres_platform_user | length > 0
@@ -86,6 +88,8 @@
       BINTURO_STRIPE_CONNECT_COUNTRY: "{{ organizers_stripe_connect_country }}"
       BINTURO_STRIPE_API_VERSION: "{{ organizers_stripe_api_version }}"
       BINTURO_STRIPE_PUBLISHABLE_KEY: "{{ organizers_stripe_publishable_key | default('') }}"
+      BINTURO_MODERATION_PROVIDER: "{{ organizers_moderation_provider }}"
+      BINTURO_OPENAI_MODERATION_MODEL: "{{ organizers_openai_moderation_model }}"
       DEPLOY_PLATFORM_BACKEND_DIR: "{{ binturo_root }}/apps/backend-platform"
       DEPLOY_PLATFORM_FRONTEND_DIR: "{{ binturo_frontend_roots.platform }}"
       DEPLOY_PLATFORM_VENV_DIR: "{{ binturo_root }}/apps/backend-platform/venv"
@@ -108,6 +112,7 @@
       DEPLOY_SSH_PRIVATE_KEY: "{{ lookup('ansible.builtin.file', github_ssh_private_key_file) }}"
       BINTURO_DB_USER: "{{ postgres_organizers_user }}"
       BINTURO_DB_PASSWORD: "{{ postgres_organizers_password }}"
+      BINTURO_OPENAI_API_KEY: "{{ organizers_openai_api_key | default('') }}"
       BINTURO_JWT_SECRET: "{{ organizers_jwt_secret }}"
       BINTURO_MAILERSEND_API_KEY: "{{ organizers_mailersend_api_key | default('') }}"
       BINTURO_SMTP_USERNAME: "{{ organizers_smtp_username | default('') }}"

@@ -28,7 +28,10 @@ Ma:
   rozliczeniowych;
 - tylko SELECT i INSERT do tabeli
   binturo_platform.payment_provider_account_index, używanej do mapowania kont
-  Stripe Connect na organizatorów.
+  Stripe Connect na organizatorów;
+- SELECT, INSERT i UPDATE do tabeli
+  binturo_platform.client_incident_messages, używanej przez prywatny kanał
+  zgłoszeń platforma–klient, bez DELETE ani praw DDL.
 
 Rola organizers nie otrzymuje CREATE na bazie ani schematach. Nie może
 wykonywać migracji, CREATE, ALTER, DROP ani samodzielnie zakładać schematów.
@@ -107,6 +110,12 @@ Event trigger `binturo_grant_organizers_payment_index_access` nadaje wyłącznie
 `binturo_platform.payment_provider_account_index`. Rola organizatora nie
 otrzymuje na tej tabeli `UPDATE`, `DELETE` ani praw DDL. Dla istniejącej tabeli
 grant jest wykonywany bezpośrednio podczas każdego uruchomienia bootstrapu.
+
+Event trigger `binturo_grant_organizers_client_incident_access` nadaje
+`SELECT, INSERT, UPDATE` po utworzeniu lub zmianie tabeli
+`binturo_platform.client_incident_messages`. Nie nadaje `DELETE`, `TRUNCATE`,
+`REFERENCES`, `TRIGGER` ani praw DDL. Dla istniejącej tabeli bootstrap wykonuje
+ten sam grant bezpośrednio.
 
 ## Uruchamianie przez 03-site
 

@@ -348,6 +348,19 @@ BEGIN
       organizers_group
     );
   END IF;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'client_incident_messages'
+  ) THEN
+    EXECUTE format(
+      'GRANT SELECT, INSERT, UPDATE ON %I.client_incident_messages TO %I',
+      platform_schema,
+      organizers_group
+    );
+  END IF;
 END
 $bootstrap$;
 
@@ -560,6 +573,44 @@ SELECT format(
   :'initial_schema'
 ) \gexec
 
+-- Client incident conversations are stored in the platform schema but are
+-- read and answered by clients through the organizers backend. UPDATE is
+-- limited by application logic to read/visibility state; DELETE and DDL stay
+-- unavailable to the organizers role.
+SELECT format(
+  $function_sql$
+CREATE OR REPLACE FUNCTION %I.binturo_grant_organizers_client_incident_access()
+RETURNS event_trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $event_function$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_event_trigger_ddl_commands() AS ddl_command
+    WHERE ddl_command.objid = pg_catalog.to_regclass(%L)::oid
+  ) THEN
+    EXECUTE %L;
+  END IF;
+END
+$event_function$
+  $function_sql$,
+  :'initial_schema',
+  format('%I.client_incident_messages', :'initial_schema'),
+  format(
+    'GRANT SELECT, INSERT, UPDATE ON %I.client_incident_messages TO %I',
+    :'initial_schema',
+    :'organizers_group_role'
+  )
+) \gexec
+
+DROP EVENT TRIGGER IF EXISTS binturo_grant_organizers_client_incident_access;
+SELECT format(
+  'CREATE EVENT TRIGGER binturo_grant_organizers_client_incident_access ON ddl_command_end WHEN TAG IN (''CREATE TABLE'', ''ALTER TABLE'') EXECUTE FUNCTION %I.binturo_grant_organizers_client_incident_access()',
+  :'initial_schema'
+) \gexec
+
 -- Ensure the known shared schemas exist before application migrations start,
 -- then apply DML-only permissions for the organizers backend. Without this,
 -- a schema created later by the platform migrations would miss these grants.
@@ -768,6 +819,15 @@ BEGIN
       AND evtenabled <> 'D'
   ) THEN
     RAISE EXCEPTION 'Internal message SELECT/INSERT grant event trigger is missing or disabled';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT
+    FROM pg_event_trigger
+    WHERE evtname = 'binturo_grant_organizers_client_incident_access'
+      AND evtenabled <> 'D'
+  ) THEN
+    RAISE EXCEPTION 'Client incident SELECT/INSERT/UPDATE grant event trigger is missing or disabled';
   END IF;
 
   IF EXISTS (
@@ -985,7 +1045,8 @@ BEGIN
   END IF;
 
   FOREACH target_schema IN ARRAY ARRAY[
-    'subscriptions', 'subscription_plans', 'subscription_payments'
+    'subscriptions', 'subscription_plans', 'subscription_payments',
+    'platform_settings'
   ]
   LOOP
     IF EXISTS (
@@ -1024,6 +1085,47 @@ BEGIN
       END IF;
     END IF;
   END LOOP;
+
+  IF EXISTS (
+    SELECT
+    FROM information_schema.tables
+    WHERE table_schema = platform_schema
+      AND table_name = 'client_incident_messages'
+  ) THEN
+    IF NOT has_table_privilege(
+      organizers_group,
+      format('%I.client_incident_messages', platform_schema),
+      'SELECT'
+    ) OR NOT has_table_privilege(
+      organizers_group,
+      format('%I.client_incident_messages', platform_schema),
+      'INSERT'
+    ) OR NOT has_table_privilege(
+      organizers_group,
+      format('%I.client_incident_messages', platform_schema),
+      'UPDATE'
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % lacks SELECT/INSERT/UPDATE on %.client_incident_messages',
+        organizers_group,
+        platform_schema;
+    END IF;
+
+    IF EXISTS (
+      SELECT
+      FROM unnest(ARRAY[
+        'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+      ]) AS forbidden(privilege_name)
+      WHERE has_table_privilege(
+        organizers_group,
+        format('%I.client_incident_messages', platform_schema),
+        forbidden.privilege_name
+      )
+    ) THEN
+      RAISE EXCEPTION 'Organizers group role % has excessive privileges on %.client_incident_messages',
+        organizers_group,
+        platform_schema;
+    END IF;
+  END IF;
 
   FOREACH target_schema IN ARRAY ARRAY[
     'internal_messages', 'internal_message_reads'

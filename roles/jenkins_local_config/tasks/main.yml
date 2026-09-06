@@ -69,6 +69,17 @@
       - platform_email_client in ['mock', 'mailersend', 'smtp', 'domain_routed']
     fail_msg: "Set each *_email_client value to mock, mailersend, smtp or domain_routed."
 
+- name: Validate organizers moderation configuration
+  ansible.builtin.assert:
+    that:
+      - organizers_moderation_provider in ['mock', 'openai']
+      - organizers_openai_moderation_model | string | length > 0
+      - organizers_moderation_provider != 'openai' or (organizers_openai_api_key | default('') | length > 0)
+    fail_msg: >-
+      Set organizers_moderation_provider to mock or openai. The openai provider
+      also requires vault_organizers_openai_api_key.
+  no_log: true
+
 - name: Validate organizers MailerSend configuration
   ansible.builtin.assert:
     that:
