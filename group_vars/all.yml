@@ -148,3 +148,6 @@ postgres_exporter_image: prometheuscommunity/postgres-exporter:v0.17.1
 prometheus_remote_write_url: ""
 prometheus_remote_write_username: ""
 prometheus_remote_write_password: ""
+
+# Public key of binturo-monitoring; set on staging and prod after generating it.
+central_monitoring_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjBFkYsjiY7QnTDFJglU7dEyXCY8qUMPThffFw9/4W0 binturo@kirisek"

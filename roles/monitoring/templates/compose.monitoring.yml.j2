@@ -9,6 +9,7 @@ services:
       - --storage.tsdb.retention.time={{ prometheus_retention_time }}
       - --storage.tsdb.retention.size={{ prometheus_retention_size }}
       - --web.enable-lifecycle
+      - --web.enable-admin-api
     ports:
       - "127.0.0.1:{{ binturo_ports.prometheus }}:9090"
     extra_hosts:

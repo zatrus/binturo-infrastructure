@@ -1,0 +1,92 @@
+---
+- name: Validate central monitoring configuration
+  ansible.builtin.assert:
+    that:
+      - central_monitoring_schedule | length > 0
+      - central_monitoring_grafana_admin_password | string | length >= 12
+      - central_monitoring_sources.keys() | list | sort == ['prod', 'staging']
+      - ansible_host != 'CHANGE_ME'
+      - ansible_user != 'CHANGE_ME'
+      - ansible_facts['user_id'] == ansible_user
+      - ansible_facts['user_uid'] | int != 0
+    fail_msg: Set the monitoring host, SSH user, schedule, and a Grafana password of at least 12 characters in the monitoring Vault.
+
+- name: Check rootless Docker socket
+  ansible.builtin.stat:
+    path: "/run/user/{{ ansible_facts['user_uid'] }}/docker.sock"
+  register: central_docker_socket
+
+- name: Verify rootless Docker is available
+  ansible.builtin.assert:
+    that:
+      - central_docker_socket.stat.exists
+      - central_docker_socket.stat.issock | default(false)
+    fail_msg: Install and start rootless Docker for the SSH user before running this playbook.
+
+- name: Check Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose version
+  environment:
+    DOCKER_HOST: "unix:///run/user/{{ ansible_facts['user_uid'] }}/docker.sock"
+  changed_when: false
+  check_mode: false
+
+- name: Create central monitoring directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ central_monitoring_root }}", mode: '0700' }
+    - { path: "{{ central_monitoring_root }}/data", mode: '0700' }
+    - { path: "{{ central_monitoring_root }}/grafana", mode: '0700' }
+    - { path: "{{ central_monitoring_ssh_key | dirname }}", mode: '0700' }
+    - { path: "{{ ansible_facts['user_dir'] }}/.config/systemd/user", mode: '0750' }
+
+- name: Generate central SSH key
+  ansible.builtin.command:
+    cmd: "ssh-keygen -q -t ed25519 -N '' -f {{ central_monitoring_ssh_key }}"
+    creates: "{{ central_monitoring_ssh_key }}"
+
+- name: Install central monitoring files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: compose.yml.j2, dest: "{{ central_monitoring_root }}/compose.yml", mode: '0600' }
+    - { src: prometheus.yml.j2, dest: "{{ central_monitoring_root }}/prometheus.yml", mode: '0644' }
+    - { src: datasources.yml.j2, dest: "{{ central_monitoring_root }}/grafana/datasources.yml", mode: '0644' }
+    - { src: sources.conf.j2, dest: "{{ central_monitoring_root }}/sources.conf", mode: '0600' }
+    - { src: grafana-password.j2, dest: "{{ central_monitoring_root }}/grafana/admin-password", mode: '0644' }
+    - { src: sync.sh.j2, dest: "{{ central_monitoring_root }}/sync.sh", mode: '0700' }
+  no_log: "{{ item.src == 'grafana-password.j2' }}"
+
+- name: Install user synchronization units
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ ansible_facts['user_dir'] }}/.config/systemd/user/{{ item.dest }}"
+    mode: '0644'
+  loop:
+    - { src: binturo-monitoring-sync.service.j2, dest: binturo-monitoring-sync.service }
+    - { src: binturo-monitoring-sync.timer.j2, dest: binturo-monitoring-sync.timer }
+
+- name: Start Grafana in rootless Docker
+  ansible.builtin.command:
+    cmd: "docker compose -f {{ central_monitoring_root }}/compose.yml -p binturo-central-monitoring up -d grafana"
+  environment:
+    DOCKER_HOST: "unix:///run/user/{{ ansible_facts['user_uid'] }}/docker.sock"
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Enable user synchronization timer
+  ansible.builtin.systemd_service:
+    name: binturo-monitoring-sync.timer
+    scope: user
+    enabled: true
+    state: restarted
+    daemon_reload: true
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts['user_uid'] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts['user_uid'] }}/bus"
+  when: not ansible_check_mode

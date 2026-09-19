@@ -1,0 +1,33 @@
+services:
+{% for source in central_monitoring_sources.keys() %}
+  prometheus-{{ source }}:
+    image: {{ central_monitoring_prometheus_image }}
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time={{ central_monitoring_retention }}
+    volumes:
+      - {{ central_monitoring_root }}/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - {{ central_monitoring_root }}/data/{{ source }}:/prometheus
+    networks:
+      - monitoring
+{% endfor %}
+  grafana:
+    image: {{ central_monitoring_grafana_image }}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - {{ central_monitoring_root }}/grafana/datasources.yml:/etc/grafana/provisioning/datasources/binturo.yml:ro
+      - {{ central_monitoring_root }}/grafana/admin-password:/run/secrets/grafana_admin_password:ro
+    networks:
+      - monitoring
+volumes:
+  grafana_data:
+networks:
+  monitoring:

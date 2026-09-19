@@ -1,4 +1,23 @@
 ---
+- name: Install snapshot helper for central monitoring
+  ansible.builtin.copy:
+    src: prometheus_snapshot.py
+    dest: "{{ binturo_root }}/monitoring/prometheus-snapshot"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0750"
+  when: binturo_user_available | default(false)
+
+- name: Allow central monitoring key to access snapshot helper
+  ansible.posix.authorized_key:
+    user: "{{ binturo_user }}"
+    key: "{{ central_monitoring_public_key }}"
+    key_options: 'restrict,command="{{ binturo_root }}/monitoring/prometheus-snapshot"'
+    state: present
+  when:
+    - binturo_user_available | default(false)
+    - central_monitoring_public_key | length > 0
+
 - name: Install Prometheus configuration
   ansible.builtin.template:
     src: prometheus.yml.j2

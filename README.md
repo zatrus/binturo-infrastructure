@@ -1,5 +1,9 @@
 # Binturo infrastructure
 
+Centralna Grafana i codzienne kopie metryk stagingu oraz produkcji są opisane
+w [docs/central-monitoring.md](docs/central-monitoring.md). Serwer centralny
+nosi nazwę `binturo-monitoring`.
+
 Projekt Ansible przygotowuje dwa niezależne hosty Ubuntu: `dev` i `prod`. Każdy
 host otrzymuje Caddy, rootless Docker, PostgreSQL, lokalny Prometheus oraz katalogi
 dla:

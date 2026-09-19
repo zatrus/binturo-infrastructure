@@ -1,0 +1,17 @@
+---
+central_monitoring_root: /data/binturo/binturo-monitoring
+central_monitoring_schedule: "*-*-* 03:00:00"
+central_monitoring_retention: 30d
+central_monitoring_prometheus_image: prom/prometheus:v3.5.0
+central_monitoring_grafana_image: grafana/grafana:11.6.4
+central_monitoring_ssh_key: "{{ ansible_facts['user_dir'] }}/.ssh/binturo-monitoring-ed25519"
+central_monitoring_grafana_admin_password: "{{ vault_central_monitoring_grafana_admin_password | default('') | string }}"
+central_monitoring_sources:
+  staging:
+    host: 146.59.3.169
+    port: 4285
+    user: binturo
+  prod:
+    host: 51.68.151.77
+    port: 2416
+    user: binturo

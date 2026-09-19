@@ -1,0 +1,3 @@
+{% for source, config in central_monitoring_sources.items() %}
+{{ source }} {{ config.user }} {{ config.host }} {{ config.port }}
+{% endfor %}

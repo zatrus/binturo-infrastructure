@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT={{ central_monitoring_root | quote }}
+KEY={{ central_monitoring_ssh_key | quote }}
+IMAGE={{ central_monitoring_prometheus_image | quote }}
+export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+exec 9>"$ROOT/sync.lock"
+flock -n 9 || exit 0
+
+# Run filesystem operations as container root in the rootless user namespace.
+# The Prometheus image runs as UID 65534 inside that namespace.
+volume_op() {
+  local operation="$1" path="$2" entry
+  case "$path" in
+    "$ROOT/data/"*) ;;
+    *) echo "Refusing path outside monitoring data: $path" >&2; return 1 ;;
+  esac
+  entry="/data/$(basename "$path")"
+  case "$operation" in
+    chown)
+      docker run --rm --network none --user 0 -v "$ROOT/data:/data" \
+        --entrypoint /bin/sh "$IMAGE" -c 'chown -R 65534:65534 "$1"' sh "$entry"
+      ;;
+    delete)
+      docker run --rm --network none --user 0 -v "$ROOT/data:/data" \
+        --entrypoint /bin/sh "$IMAGE" -c 'rm -rf "$1"' sh "$entry"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+ready() {
+  local service="$1" id
+  id=$(docker compose -f "$ROOT/compose.yml" -p binturo-central-monitoring ps -q "$service")
+  [[ -n "$id" ]] || return 1
+  for ((attempt=0; attempt<30; attempt++)); do
+    if docker exec "$id" wget -q -O /dev/null http://127.0.0.1:9090/-/ready; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+while read -r source remote_user host port; do
+  [[ -n "$source" ]] || continue
+  incoming=$(mktemp -d "$ROOT/data/.incoming-${source}.XXXXXX")
+  previous="$ROOT/data/.previous-${source}"
+  active="$ROOT/data/$source"
+  service="prometheus-$source"
+  if [[ ! -d "$active" && -d "$previous" ]]; then
+    mv -- "$previous" "$active"
+  fi
+  cleanup() { volume_op delete "$incoming"; }
+  trap cleanup EXIT
+  ssh -i "$KEY" -p "$port" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+    "$remote_user@$host" sync | tar -xf - -C "$incoming"
+  test -n "$(find "$incoming" -maxdepth 1 -type d -name '01*' -print -quit)"
+  volume_op chown "$incoming"
+  docker compose -f "$ROOT/compose.yml" -p binturo-central-monitoring stop "$service"
+  volume_op delete "$previous"
+  if [[ -d "$active" ]]; then mv -- "$active" "$previous"; fi
+  mv -- "$incoming" "$active"
+  trap - EXIT
+  if docker compose -f "$ROOT/compose.yml" -p binturo-central-monitoring up -d "$service" && ready "$service"; then
+    volume_op delete "$previous"
+  else
+    docker compose -f "$ROOT/compose.yml" -p binturo-central-monitoring stop "$service"
+    mv -- "$active" "$incoming"
+    if [[ -d "$previous" ]]; then mv -- "$previous" "$active"; fi
+    docker compose -f "$ROOT/compose.yml" -p binturo-central-monitoring up -d "$service"
+    volume_op delete "$incoming"
+    exit 1
+  fi
+done < "$ROOT/sources.conf"

@@ -1,0 +1,10 @@
+[Unit]
+Description=Scheduled Binturo Prometheus snapshot synchronization
+
+[Timer]
+OnCalendar={{ central_monitoring_schedule }}
+Persistent=true
+Unit=binturo-monitoring-sync.service
+
+[Install]
+WantedBy=timers.target

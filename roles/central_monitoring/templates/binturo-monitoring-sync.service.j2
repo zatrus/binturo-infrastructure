@@ -1,0 +1,9 @@
+[Unit]
+Description=Synchronize Binturo Prometheus snapshots
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart={{ central_monitoring_root }}/sync.sh
+TimeoutStartSec=6h

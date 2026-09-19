@@ -1,0 +1,7 @@
+---
+- name: Configure central monitoring host
+  hosts: central_monitoring
+  gather_facts: true
+  become: false
+  roles:
+    - ../roles/central_monitoring
