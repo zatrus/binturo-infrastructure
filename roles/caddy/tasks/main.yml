@@ -145,6 +145,16 @@
   notify: Validate and reload Caddy
   when: not ansible_check_mode or binturo_caddy_available
 
+- name: Install local Caddy metrics endpoint
+  ansible.builtin.template:
+    src: metrics-site.caddy.j2
+    dest: "{{ caddy_dynamic_config_dir }}/01-metrics.caddy"
+    owner: root
+    group: caddy
+    mode: "0640"
+  notify: Validate and reload Caddy
+  when: not ansible_check_mode or binturo_caddy_available
+
 - name: Install common Caddy snippet
   ansible.builtin.template:
     src: common.caddy.j2

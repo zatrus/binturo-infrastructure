@@ -5,6 +5,21 @@ wszystkie pliki z tego katalogu. Ansible zarządza plikami `04-redirects.caddy`,
 `10-platform.caddy` i `20-organizers.caddy`; inne procesy mogą dodawać osobne pliki
 o innych nazwach.
 
+## Metryki Caddy
+
+Ansible włącza metryki Caddy z etykietą hosta i tworzy osobny endpoint
+`http://<adres hosta>:<binturo_ports.caddy_metrics>/metrics` w pliku
+`01-metrics.caddy`. Listener przyjmuje ruch na interfejsach hosta, aby
+Prometheus w kontenerze mógł dotrzeć do niego przez `host.docker.internal`.
+UFW dopuszcza z zewnątrz tylko wskazane porty (w tym HTTPS), więc port metryk
+nie jest publicznie dostępny. Endpoint nie przechodzi przez publiczne witryny
+ani przez API administracyjne Caddy na porcie 2019. Nie włączono
+`observe_catchall_hosts`, aby dowolne nagłówki Host nie tworzyły nowych serii.
+
+Po wdrożeniu sprawdź na hoście odpowiedź endpointu, stan UFW oraz w Prometheusie
+`up{job="caddy"}`. Nie otwieraj portu metryk w UFW ani portu administracyjnego
+2019. Jeśli cel jest niedostępny, sprawdź trasę kontener–host i reguły UFW.
+
 Każda publiczna witryna musi importować snippet `binturo_common`. Zapewnia on
 wspólne limity, nagłówki bezpieczeństwa oraz blokadę typowych plików wrażliwych.
 Logowanie dostępu jest konfigurowane osobno dla każdej witryny:

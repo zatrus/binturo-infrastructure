@@ -73,6 +73,7 @@ binturo_ports:
   platform: 18101
   organizers: 18102
   prometheus: 19090
+  caddy_metrics: 19091
 
 binturo_frontend_ports:
   organizers_staff: 18201

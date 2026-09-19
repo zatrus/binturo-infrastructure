@@ -1,0 +1,4 @@
+# Managed by Ansible. UFW blocks external access to this dedicated listener.
+http://:{{ binturo_ports.caddy_metrics }} {
+    metrics /metrics
+}
