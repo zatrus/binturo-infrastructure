@@ -3,13 +3,11 @@
     # Loopback is required by the ExecReload command shipped in Ubuntu packages.
     # Caddy validates the Host header for a non-wildcard admin listener.
     admin 127.0.0.1:2019
-    metrics {
-        per_host
-    }
     grace_period 30s
     auto_https disable_redirects
 
     servers {
+        metrics
         protocols h1 h2
         strict_sni_host on
         max_header_size {{ caddy_max_header_size }}

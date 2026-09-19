@@ -7,14 +7,16 @@ o innych nazwach.
 
 ## Metryki Caddy
 
-Ansible włącza metryki Caddy z etykietą hosta i tworzy osobny endpoint
+Ansible włącza metryki serwerów Caddy i tworzy osobny endpoint
 `http://<adres hosta>:<binturo_ports.caddy_metrics>/metrics` w pliku
 `01-metrics.caddy`. Listener przyjmuje ruch na interfejsach hosta, aby
 Prometheus w kontenerze mógł dotrzeć do niego przez `host.docker.internal`.
 UFW dopuszcza z zewnątrz tylko wskazane porty (w tym HTTPS), więc port metryk
-nie jest publicznie dostępny. Endpoint nie przechodzi przez publiczne witryny
-ani przez API administracyjne Caddy na porcie 2019. Nie włączono
-`observe_catchall_hosts`, aby dowolne nagłówki Host nie tworzyły nowych serii.
+nie jest publicznie dostępny. Na osobnym porcie Caddy przekazuje wyłącznie
+`GET /metrics` do lokalnego endpointu administracyjnego na porcie 2019;
+pozostałe ścieżki zwracają 404. Składnia `servers { metrics }` jest zgodna z
+wersją Caddy dostarczaną przez pakiet Ubuntu 24.04. Ta wersja nie obsługuje
+globalnej opcji `metrics { per_host }`.
 
 Po wdrożeniu sprawdź na hoście odpowiedź endpointu, stan UFW oraz w Prometheusie
 `up{job="caddy"}`. Nie otwieraj portu metryk w UFW ani portu administracyjnego

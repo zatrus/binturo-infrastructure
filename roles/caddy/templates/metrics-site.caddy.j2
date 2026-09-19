@@ -1,4 +1,15 @@
 # Managed by Ansible. UFW blocks external access to this dedicated listener.
 http://:{{ binturo_ports.caddy_metrics }} {
-    metrics /metrics
+    @metrics {
+        method GET
+        path /metrics
+    }
+    handle @metrics {
+        reverse_proxy 127.0.0.1:2019 {
+            header_up Host 127.0.0.1:2019
+        }
+    }
+    handle {
+        respond 404
+    }
 }
