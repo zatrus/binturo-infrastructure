@@ -1,4 +1,5 @@
 apiVersion: 1
+prune: true
 datasources:
 {% for source in central_monitoring_sources.keys() %}
   - name: Prometheus {{ source }}
