@@ -11,5 +11,6 @@
     - postgres
     - backend_services
     - platform_cron
+    - organizers_logrotate
     - caddy
     - monitoring

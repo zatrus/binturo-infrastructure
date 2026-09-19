@@ -1,0 +1,14 @@
+[Unit]
+Description=Rotate Binturo Organizers logs
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate --state /var/lib/logrotate/binturo-organizers.status /etc/logrotate.d/binturo-organizers
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths={{ organizers_log_directory }} {{ binturo_root }}/apps/backend-organizers /var/lib/logrotate

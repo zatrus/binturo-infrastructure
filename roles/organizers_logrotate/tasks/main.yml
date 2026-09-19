@@ -1,0 +1,63 @@
+---
+- name: Validate organizers log rotation paths
+  ansible.builtin.assert:
+    that:
+      - organizers_log_directory | string | length > 0
+      - organizers_application_log_file | string | length > 0
+    fail_msg: Configure the organizers log paths.
+
+- name: Install logrotate
+  ansible.builtin.apt:
+    name: logrotate
+    state: present
+    update_cache: true
+
+- name: Create organizers log archive directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0750"
+  loop:
+    - "{{ organizers_log_directory }}"
+    - "{{ organizers_log_directory }}/archive"
+  when: binturo_user_available | default(false)
+
+- name: Install organizers logrotate policy
+  ansible.builtin.template:
+    src: organizers-logrotate.j2
+    dest: /etc/logrotate.d/binturo-organizers
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart organizers log rotation timer
+
+- name: Install organizers log rotation service
+  ansible.builtin.template:
+    src: binturo-organizers-logrotate.service.j2
+    dest: /etc/systemd/system/binturo-organizers-logrotate.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart organizers log rotation timer
+
+- name: Install organizers log rotation timer
+  ansible.builtin.template:
+    src: binturo-organizers-logrotate.timer.j2
+    dest: /etc/systemd/system/binturo-organizers-logrotate.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart organizers log rotation timer
+
+- name: Apply pending organizers log rotation changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start organizers log rotation timer
+  ansible.builtin.systemd_service:
+    name: binturo-organizers-logrotate.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode

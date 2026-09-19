@@ -47,6 +47,12 @@ Konfiguracja jest podzielona na trzy etapy:
    rootless Docker, Caddy, PostgreSQL, Prometheus, usługi backendów i strukturę
    katalogów aplikacji.
 
+Logi aplikacyjne obu backendów są rotowane przez osobne timery systemd
+o każdej pełnej godzinie i 30 minutach. `logrotate` pomija brakujące i puste
+pliki, kopiuje aktywny log przed jego wyzerowaniem (`copytruncate`) i zapisuje
+archiwa w `logs/backend-platform/archive` oraz `logs/backend-organizers/archive`.
+Konfiguracja nie ogranicza liczby archiwów (`rotate -1`).
+
 Rola `python_venvs` tworzy środowiska `venv` w katalogach
 `apps/backend-organizers`, `apps/backend-platform`, `apps/www` i
 `apps/frontend-platform`.

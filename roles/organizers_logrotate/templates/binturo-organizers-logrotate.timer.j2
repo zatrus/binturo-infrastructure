@@ -1,0 +1,11 @@
+[Unit]
+Description=Rotate Binturo Organizers logs hourly
+
+[Timer]
+OnCalendar=*-*-* *:30:00
+Persistent=true
+AccuracySec=1min
+Unit=binturo-organizers-logrotate.service
+
+[Install]
+WantedBy=timers.target
