@@ -25,7 +25,7 @@ caddy_tls_cloudflare_origin: true
 caddy_cloudflare_origin_certificate: "{{ vault_cloudflare_origin_certificate }}"
 caddy_cloudflare_origin_private_key: "{{ vault_cloudflare_origin_private_key }}"
 
-binturo_root: /srv/binturo-staging
+binturo_root: /srv/binturo
 postgres_database: binturo_staging
 postgres_data_path: "{{ binturo_root }}/persistent/postgres"
 

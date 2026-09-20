@@ -362,9 +362,17 @@ SSH zadziałał, ale skrypt na serwerze źródłowym nie połączył się z loka
 Prometheusem. Domyślnie skrypt wywołuje API na `127.0.0.1:19090`, zgodnie z
 portem w `group_vars/all.yml`. Obecnie synchronizowany jest tylko staging.
 Jeśli dziennik wskazuje `/srv/binturo/monitoring/prometheus-snapshot`,
-serwer centralny nadal używa starego pliku `sources.conf` z produkcją;
-uruchom ponownie playbook centralny. Na stagingu zaloguj się na konto
-`binturo` i uruchom:
+jest to właściwa ścieżka stagingu przy obecnym `binturo_root`. Sprawdź
+wdrożoną listę źródeł na `kirisek`:
+
+```bash
+cat /data/binturo/binturo-monitoring/sources.conf
+```
+
+Powinna zawierać tylko wiersz zaczynający się od `staging`. Jeśli zawiera
+`prod`, uruchom ponownie playbook centralny z aktualnym repozytorium i ponów
+sprawdzenie. Jeśli zawiera tylko `staging`, sprawdź lokalnego Prometheusa.
+Na stagingu zaloguj się na konto `binturo` i uruchom:
 
 ```bash
 export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
@@ -377,6 +385,23 @@ Jeśli kontener jest zatrzymany albo go nie ma, uruchom stagingowy playbook
 `03-site.yml` i sprawdź zadanie `Start monitoring stack`. Jeśli kontener działa,
 ale `curl` nadal zwraca odmowę połączenia, sprawdź mapowanie portu oraz logi
 kontenera. Nie uruchamiaj ręcznie nowego Prometheusa z innym wolumenem danych.
+Komunikat `open /etc/prometheus/prometheus.yml: permission denied` oznacza, że
+plik konfiguracji na stagingu nie jest czytelny dla procesu Prometheusa
+(UID 65534 w kontenerze). Rola `monitoring` instaluje go z uprawnieniami
+`0644`. Po wdrożeniu aktualnego repozytorium sprawdź uprawnienia i stan API:
+
+```bash
+stat -c '%a %U:%G %n' /srv/binturo/monitoring/prometheus.yml
+docker ps -a --filter name=binturo-prometheus
+curl -fsS http://127.0.0.1:19090/-/ready
+```
+
+W obecnym wariancie `remote_write` jest wyłączone, a hasło eksportera
+PostgreSQL znajduje się w osobnym katalogu `secrets`. Jeśli później włączysz
+`remote_write` z hasłem, trzeba przenieść jego sekret poza czytelny dla
+wszystkich plik `prometheus.yml`. Nie zmieniaj ręcznie uprawnień całego
+katalogu `secrets`.
+
 Po przywróceniu odpowiedzi API ponów synchronizację na `kirisek`:
 
 ```bash
@@ -427,8 +452,8 @@ Logi można teraz odczytać bezpośrednio na stagingu lub produkcji:
 | --- | --- |
 | Backend platformy, usługa | `sudo journalctl -u binturo-platform.service -n 100 --no-pager` |
 | Backend organizatorów, usługa | `sudo journalctl -u binturo-organizers.service -n 100 --no-pager` |
-| Backend platformy, plik aplikacji | `tail -n 100 /srv/binturo-staging/apps/backend-platform/binturo_platform.log` |
-| Backend organizatorów, plik aplikacji | `tail -n 100 /srv/binturo-staging/apps/backend-organizers/binturo_organizers.log` |
+| Backend platformy, plik aplikacji | `tail -n 100 /srv/binturo/apps/backend-platform/binturo_platform.log` |
+| Backend organizatorów, plik aplikacji | `tail -n 100 /srv/binturo/apps/backend-organizers/binturo_organizers.log` |
 | Caddy, żądania platformy | `sudo tail -n 100 /var/log/caddy/platform.log` |
 | Caddy, żądania organizatorów | `sudo tail -n 100 /var/log/caddy/organizers.log` |
 | Caddy, usługa | `sudo journalctl -u caddy.service -n 100 --no-pager` |
@@ -436,8 +461,8 @@ Logi można teraz odczytać bezpośrednio na stagingu lub produkcji:
 Ścieżki aplikacji wynikają z `binturo_root`, `platform_application_log_file`
 i `organizers_application_log_file` w `group_vars/all.yml`. Jeśli inventory
 nadpisuje te zmienne, użyj odpowiednich ścieżek. Pliki archiwalne backendów
-są na stagingu w `/srv/binturo-staging/logs/backend-platform/archive` i
-`/srv/binturo-staging/logs/backend-organizers/archive`; rotacja może przenieść wcześniejsze
+są na stagingu w `/srv/binturo/logs/backend-platform/archive` i
+`/srv/binturo/logs/backend-organizers/archive`; rotacja może przenieść wcześniejsze
 wpisy poza aktywny plik.
 
 Jeśli logi mają być przeszukiwane **w Grafanie**, trzeba wdrożyć osobny

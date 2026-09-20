@@ -45,6 +45,7 @@ ready() {
 
 while read -r source remote_user host port; do
   [[ -n "$source" ]] || continue
+  echo "Synchronizing Prometheus snapshot: $source ($remote_user@$host:$port)"
   incoming=$(mktemp -d "$ROOT/data/.incoming-${source}.XXXXXX")
   previous="$ROOT/data/.previous-${source}"
   active="$ROOT/data/$source"

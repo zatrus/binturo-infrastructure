@@ -24,7 +24,9 @@
     dest: "{{ binturo_root }}/monitoring/prometheus.yml"
     owner: "{{ binturo_user }}"
     group: "{{ binturo_group }}"
-    mode: "0640"
+    # Prometheus runs as UID 65534 inside rootless Docker. The bind-mounted
+    # configuration must be readable by that UID.
+    mode: "0644"
   notify: Restart monitoring stack
   when: binturo_user_available | default(false)
 
