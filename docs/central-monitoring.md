@@ -440,6 +440,54 @@ a następnie w **Explore** wykonaj zapytanie `up`.
 `up` pokazuje stan celów Prometheusa w pobranej migawce. Nie jest to podgląd
 bieżącego stanu stagingu między synchronizacjami.
 
+### Dashboardy Grafany
+
+Playbook kopiuje cztery dashboardy z
+`roles/central_monitoring/files/dashboards/` do katalogu na `kirisek` i
+udostępnia je Grafanie przez provisioning plikowy. Po ponownym uruchomieniu
+centralnego playbooka są dostępne w folderze **Binturo**:
+
+| Dashboard | Zakres |
+| --- | --- |
+| Stan stagingu | `up`, błędy 5xx, ostatni cron, zajętość dysku |
+| Zasoby hosta | CPU, pamięć, dyski i sieć z node-exportera |
+| Obciążenie backendów | Żądania, p95 czasu odpowiedzi, 4xx/5xx i najczęstsze trasy |
+| Wykorzystanie biznesowe | Zapisy, płatności, subskrypcje, aktywni klienci, organizacje i zajęcia |
+
+Na kontrolerze Ansible wdroż je poleceniem:
+
+```bash
+ansible-playbook -i inventories/monitoring/hosts.yml playbooks/central-monitoring.yml --ask-vault-pass
+```
+
+Grafana po wdrożeniu odczytuje dashboardy z plików JSON. Zmiany paneli
+wprowadzaj w repozytorium i wdrażaj ponownie playbookiem; konfiguracja
+`allowUiUpdates: false` blokuje zapisywanie zmian tych dashboardów w GUI.
+Dashboardy wskazują źródło `prometheus-staging`. Ich panele biznesowe
+wymagają, aby joby `binturo-platform` i `binturo-organizers` miały `up=1`.
+Oba backendy słuchają na `127.0.0.1`, dlatego lokalny Prometheus pobiera ich
+metryki przez wewnętrzny listener Caddy na porcie `19091`, ze ścieżek
+`/platform/metrics` i `/organizers/metrics`. Po wdrożeniu stagingowego
+`03-site.yml` sprawdź na stagingu:
+
+```bash
+curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:19091/platform/metrics
+curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:19091/organizers/metrics
+curl -fsSG --data-urlencode 'query=up{job="binturo-platform"}' http://127.0.0.1:19090/api/v1/query
+curl -fsSG --data-urlencode 'query=up{job="binturo-organizers"}' http://127.0.0.1:19090/api/v1/query
+```
+
+Oba endpointy powinny zwrócić `200`, a oba zapytania `up` wartość `1`.
+Następnie uruchom synchronizację na `kirisek`, aby centralny Prometheus dostał
+nowe próbki. Okres, w którym backendy nie były scrape'owane, pozostanie
+pusty; synchronizacja nie odtwarza historycznych metryk, których nie zebrał
+lokalny Prometheus.
+
+Centralna kopia jest aktualizowana tylko po synchronizacji, więc panel
+**Stan stagingu** przedstawia stan w ostatniej migawce. Dane biznesowe
+pozostają dostępne tylko w granicach retencji lokalnego Prometheusa
+(obecnie 10 dni lub 10 GB).
+
 ### Gdzie są logi
 
 Obecne wdrożenie centralne zbiera **metryki**, nie logi. Prometheus nie

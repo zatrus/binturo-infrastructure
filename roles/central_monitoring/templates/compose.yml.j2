@@ -24,6 +24,8 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - {{ central_monitoring_root }}/grafana/datasources.yml:/etc/grafana/provisioning/datasources/binturo.yml:ro
+      - {{ central_monitoring_root }}/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/binturo.yml:ro
+      - {{ central_monitoring_root }}/grafana/dashboards:/var/lib/grafana/dashboards/binturo:ro
       - {{ central_monitoring_root }}/grafana/admin-password:/run/secrets/grafana_admin_password:ro
     networks:
       - monitoring

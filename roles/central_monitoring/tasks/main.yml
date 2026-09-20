@@ -41,6 +41,7 @@
     - { path: "{{ central_monitoring_root }}", mode: '0700' }
     - { path: "{{ central_monitoring_root }}/data", mode: '0700' }
     - { path: "{{ central_monitoring_root }}/grafana", mode: '0700' }
+    - { path: "{{ central_monitoring_root }}/grafana/dashboards", mode: '0755' }
     - { path: "{{ central_monitoring_ssh_key | dirname }}", mode: '0700' }
     - { path: "{{ ansible_facts['user_dir'] }}/.config/systemd/user", mode: '0750' }
 
@@ -58,10 +59,18 @@
     - { src: compose.yml.j2, dest: "{{ central_monitoring_root }}/compose.yml", mode: '0600' }
     - { src: prometheus.yml.j2, dest: "{{ central_monitoring_root }}/prometheus.yml", mode: '0644' }
     - { src: datasources.yml.j2, dest: "{{ central_monitoring_root }}/grafana/datasources.yml", mode: '0644' }
+    - { src: dashboards.yml.j2, dest: "{{ central_monitoring_root }}/grafana/dashboards.yml", mode: '0644' }
     - { src: sources.conf.j2, dest: "{{ central_monitoring_root }}/sources.conf", mode: '0600' }
     - { src: grafana-password.j2, dest: "{{ central_monitoring_root }}/grafana/admin-password", mode: '0644' }
     - { src: sync.sh.j2, dest: "{{ central_monitoring_root }}/sync.sh", mode: '0700' }
   no_log: "{{ item.src == 'grafana-password.j2' }}"
+
+- name: Install Grafana dashboards
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ central_monitoring_root }}/grafana/dashboards/{{ item | basename }}"
+    mode: '0644'
+  loop: "{{ lookup('ansible.builtin.fileglob', role_path ~ '/files/dashboards/*.json', wantlist=True) }}"
 
 - name: Install user synchronization units
   ansible.builtin.template:

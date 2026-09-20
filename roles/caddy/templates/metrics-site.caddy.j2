@@ -9,6 +9,22 @@ http://:{{ binturo_ports.caddy_metrics }} {
             header_up Host 127.0.0.1:2019
         }
     }
+    @platform_metrics {
+        method GET
+        path /platform/metrics
+    }
+    handle @platform_metrics {
+        rewrite * /metrics
+        reverse_proxy 127.0.0.1:{{ binturo_ports.platform }}
+    }
+    @organizers_metrics {
+        method GET
+        path /organizers/metrics
+    }
+    handle @organizers_metrics {
+        rewrite * /metrics
+        reverse_proxy 127.0.0.1:{{ binturo_ports.organizers }}
+    }
     handle {
         respond 404
     }

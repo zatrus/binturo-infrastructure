@@ -32,12 +32,14 @@ scrape_configs:
         replacement: postgres-exporter:9187
 
   - job_name: binturo-platform
+    metrics_path: /platform/metrics
     static_configs:
-      - targets: ["host.docker.internal:{{ binturo_ports.platform }}"]
+      - targets: ["host.docker.internal:{{ binturo_ports.caddy_metrics }}"]
 
   - job_name: binturo-organizers
+    metrics_path: /organizers/metrics
     static_configs:
-      - targets: ["host.docker.internal:{{ binturo_ports.organizers }}"]
+      - targets: ["host.docker.internal:{{ binturo_ports.caddy_metrics }}"]
 
 {% if prometheus_remote_write_url | length > 0 %}
 remote_write:

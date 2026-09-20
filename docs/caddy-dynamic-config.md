@@ -12,14 +12,20 @@ Ansible włącza metryki serwerów Caddy i tworzy osobny endpoint
 `01-metrics.caddy`. Listener przyjmuje ruch na interfejsach hosta, aby
 Prometheus w kontenerze mógł dotrzeć do niego przez `host.docker.internal`.
 UFW dopuszcza z zewnątrz tylko wskazane porty (w tym HTTPS), więc port metryk
-nie jest publicznie dostępny. Na osobnym porcie Caddy przekazuje wyłącznie
-`GET /metrics` do lokalnego endpointu administracyjnego na porcie 2019;
-pozostałe ścieżki zwracają 404. Składnia `servers { metrics }` jest zgodna z
+nie jest publicznie dostępny. Na osobnym porcie Caddy przekazuje `GET /metrics`
+do lokalnego endpointu administracyjnego na porcie 2019, a
+`GET /platform/metrics` i `GET /organizers/metrics` odpowiednio do lokalnych
+backendów na portach `binturo_ports.platform` i `binturo_ports.organizers`.
+Pozostałe ścieżki zwracają 404. Backendów nie trzeba wystawiać na interfejsie
+mostka Dockera; mogą nadal słuchać wyłącznie na `127.0.0.1`.
+Składnia `servers { metrics }` jest zgodna z
 wersją Caddy dostarczaną przez pakiet Ubuntu 24.04. Ta wersja nie obsługuje
 globalnej opcji `metrics { per_host }`.
 
-Po wdrożeniu sprawdź na hoście odpowiedź endpointu, stan UFW oraz w Prometheusie
-`up{job="caddy"}`. Nie otwieraj portu metryk w UFW ani portu administracyjnego
+Po wdrożeniu sprawdź na hoście odpowiedzi wszystkich trzech endpointów, stan
+UFW oraz w Prometheusie `up{job="caddy"}`,
+`up{job="binturo-platform"}` i `up{job="binturo-organizers"}`. Nie otwieraj
+portu metryk w UFW ani portu administracyjnego
 2019. Jeśli cel jest niedostępny, sprawdź trasę kontener–host i reguły UFW.
 
 Każda publiczna witryna musi importować snippet `binturo_common`. Zapewnia on
