@@ -908,18 +908,21 @@ BEGIN
     ) OR EXISTS (
       SELECT
       FROM information_schema.columns AS disallowed
-      WHERE disallowed.table_schema = platform_schema
-        AND disallowed.table_name = 'organizers'
-        AND disallowed.column_name <> ALL (ARRAY[
-          'contact_phone', 'contact_email', 'street',
-          'city', 'postal_code', 'country'
-        ])
-        AND has_column_privilege(
+      WHERE CASE
+        WHEN disallowed.table_schema = platform_schema
+          AND disallowed.table_name = 'organizers'
+          AND disallowed.column_name <> ALL (ARRAY[
+            'contact_phone', 'contact_email', 'street',
+            'city', 'postal_code', 'country'
+          ])
+        THEN has_column_privilege(
           organizers_group,
           format('%I.organizers', platform_schema),
           disallowed.column_name,
           'UPDATE'
         )
+        ELSE FALSE
+      END
     ) THEN
       RAISE EXCEPTION 'Organizers group role % has excessive UPDATE privileges on %.organizers',
         organizers_group,
@@ -981,15 +984,18 @@ BEGIN
     ) OR EXISTS (
       SELECT
       FROM information_schema.columns AS disallowed
-      WHERE disallowed.table_schema = platform_schema
-        AND disallowed.table_name = 'organizer_billing_info'
-        AND disallowed.column_name <> 'organizer_id'
-        AND has_column_privilege(
+      WHERE CASE
+        WHEN disallowed.table_schema = platform_schema
+          AND disallowed.table_name = 'organizer_billing_info'
+          AND disallowed.column_name <> 'organizer_id'
+        THEN has_column_privilege(
           organizers_group,
           format('%I.organizer_billing_info', platform_schema),
           disallowed.column_name,
           'SELECT'
         )
+        ELSE FALSE
+      END
     ) THEN
       RAISE EXCEPTION 'Organizers group role % has excessive privileges on %.organizer_billing_info',
       organizers_group,
