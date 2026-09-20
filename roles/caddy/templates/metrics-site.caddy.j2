@@ -1,5 +1,6 @@
-# Managed by Ansible. UFW blocks external access to this dedicated listener.
+# Managed by Ansible. RootlessKit reaches this host-loopback listener at 10.0.2.2.
 http://:{{ binturo_ports.caddy_metrics }} {
+    bind 127.0.0.1
     @metrics {
         method GET
         path /metrics

@@ -1,10 +1,10 @@
 {
-  "uid": "binturo-staging-backends",
-  "title": "Binturo / Backend i HTTP",
+  "uid": "binturo-staging-subscriptions",
+  "title": "Binturo / Subskrypcje i płatności",
   "tags": [
     "binturo",
     "staging",
-    "backend"
+    "biznes"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -18,13 +18,13 @@
   "panels": [
     {
       "id": 1,
-      "title": "Żądania HTTP / s",
-      "type": "timeseries",
+      "title": "Subskrypcje według statusu",
+      "type": "stat",
       "gridPos": {
         "x": 0,
         "y": 0,
         "w": 12,
-        "h": 8
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -33,27 +33,40 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "count by (subscription_status) (last_over_time(binturo_platform_organizer_subscription_info[48h]))",
+          "legendFormat": "{{subscription_status}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
     },
     {
       "id": 2,
-      "title": "Czas odpowiedzi p50",
-      "type": "timeseries",
+      "title": "Plany subskrypcji",
+      "type": "stat",
       "gridPos": {
         "x": 12,
         "y": 0,
         "w": 12,
-        "h": 8
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -62,27 +75,40 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p50 {{service}}"
+          "expr": "count by (plan_name) (last_over_time(binturo_platform_organizer_subscription_info[48h]))",
+          "legendFormat": "{{plan_name}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
     },
     {
       "id": 3,
-      "title": "Czas odpowiedzi p95",
-      "type": "timeseries",
+      "title": "Wygasają w ciągu 7 dni",
+      "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 5,
         "w": 12,
-        "h": 8
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -91,25 +117,38 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p95 {{service}}"
+          "expr": "count((last_over_time(binturo_platform_organizer_subscription_valid_until_timestamp_seconds[48h]) - time() < 7 * 86400) and (last_over_time(binturo_platform_organizer_subscription_valid_until_timestamp_seconds[48h]) > time())) or vector(0)",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
     },
     {
       "id": 4,
-      "title": "Czas odpowiedzi p99",
+      "title": "Zdarzenia subskrypcji / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 8,
+        "y": 5,
         "w": 12,
         "h": 8
       },
@@ -120,13 +159,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.99, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p99 {{service}}"
+          "expr": "sum by (outcome) (increase(binturo_subscription_payment_events_total[1d]))",
+          "legendFormat": "{{outcome}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -134,11 +173,11 @@
     },
     {
       "id": 5,
-      "title": "Odpowiedzi 5xx / s",
+      "title": "Kwota płatności brutto / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -149,25 +188,26 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total{status_class=\"5xx\"}[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "sum by (outcome) (increase(binturo_subscription_payment_amount_gross_total[1d]))",
+          "legendFormat": "{{outcome}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "currencyPLN"
         },
         "overrides": []
       },
-      "options": {}
+      "options": {},
+      "description": "Kwota brutto w PLN; applied_mock oznacza płatności testowe, nie rzeczywisty przychód ani MRR."
     },
     {
       "id": 6,
-      "title": "Odpowiedzi 4xx / s",
+      "title": "Płatności testowe / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 16,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -178,13 +218,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total{status_class=\"4xx\"}[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "sum(increase(binturo_subscription_payment_amount_gross_total{outcome=\"applied_mock\"}[1d]))",
+          "legendFormat": "mock"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "currencyPLN"
         },
         "overrides": []
       },
@@ -192,11 +232,11 @@
     },
     {
       "id": 7,
-      "title": "Udział błędów 5xx %",
+      "title": "Płatności rzeczywiste / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 21,
         "w": 12,
         "h": 8
       },
@@ -207,13 +247,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (service) (rate(binturo_http_requests_total{status_class=\"5xx\"}[5m])) / clamp_min(sum by (service) (rate(binturo_http_requests_total[5m])), 0.000001)",
-          "legendFormat": "{{service}}"
+          "expr": "sum(increase(binturo_subscription_payment_amount_gross_total{outcome=\"finalized\"}[1d]))",
+          "legendFormat": "finalized"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percent"
+          "unit": "currencyPLN"
         },
         "overrides": []
       },
@@ -221,11 +261,11 @@
     },
     {
       "id": 8,
-      "title": "Najczęściej wywoływane trasy",
+      "title": "Cron: kończące się i wygasłe subskrypcje",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 24,
+        "y": 21,
         "w": 12,
         "h": 8
       },
@@ -236,37 +276,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (service, route) (rate(binturo_http_requests_total[5m])))",
-          "legendFormat": "{{service}} {{route}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "options": {}
-    },
-    {
-      "id": 9,
-      "title": "Najwięcej błędów 5xx według trasy",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 0,
-        "y": 32,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-staging"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "topk(10, sum by (service, route) (increase(binturo_http_requests_total{status_class=\"5xx\"}[1h])))",
-          "legendFormat": "{{service}} {{route}}"
+          "expr": "binturo_platform_cron_limits_expiring_soon or binturo_platform_cron_limits_expired",
+          "legendFormat": "{{__name__}}"
         }
       ],
       "fieldConfig": {

@@ -13,7 +13,9 @@ services:
     ports:
       - "127.0.0.1:{{ binturo_ports.prometheus }}:9090"
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      # RootlessKit's slirp4netns host loopback endpoint. The Docker bridge
+      # host-gateway (172.17.0.1) is inside RootlessKit and cannot reach Caddy.
+      - "host.docker.internal:10.0.2.2"
     volumes:
       - {{ binturo_root }}/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus

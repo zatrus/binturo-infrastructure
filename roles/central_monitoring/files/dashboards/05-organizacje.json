@@ -1,10 +1,11 @@
 {
-  "uid": "binturo-staging-backends",
-  "title": "Binturo / Backend i HTTP",
+  "uid": "binturo-staging-organizers",
+  "title": "Binturo / Organizacje i zaangażowanie",
   "tags": [
     "binturo",
     "staging",
-    "backend"
+    "biznes",
+    "organizacje"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -18,7 +19,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Żądania HTTP / s",
+      "title": "Klienci aktywni",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -33,13 +34,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "binturo_organizer_clients_active_total{organizer_code=~\"$organizer_code\"}",
+          "legendFormat": "{{organizer_code}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -47,7 +48,7 @@
     },
     {
       "id": 2,
-      "title": "Czas odpowiedzi p50",
+      "title": "Wszyscy klienci",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -62,21 +63,22 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p50 {{service}}"
+          "expr": "binturo_organizer_clients_total{organizer_code=~\"$organizer_code\"}",
+          "legendFormat": "{{organizer_code}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
-      "options": {}
+      "options": {},
+      "description": "Różnica względem aktywnych klientów nie jest samodzielną miarą churnu."
     },
     {
       "id": 3,
-      "title": "Czas odpowiedzi p95",
+      "title": "Zajęcia w bieżącym tygodniu",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -91,13 +93,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p95 {{service}}"
+          "expr": "binturo_organizer_classes_current_week_total{organizer_code=~\"$organizer_code\"}",
+          "legendFormat": "{{organizer_code}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -105,7 +107,7 @@
     },
     {
       "id": 4,
-      "title": "Czas odpowiedzi p99",
+      "title": "Zapisy w bieżącym tygodniu",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -120,13 +122,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.99, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p99 {{service}}"
+          "expr": "sum by (organizer_code, status) (binturo_organizer_enrollments_current_week_total{organizer_code=~\"$organizer_code\",status=~\"confirmed|waitlist\"})",
+          "legendFormat": "{{organizer_code}} {{status}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -134,7 +136,7 @@
     },
     {
       "id": 5,
-      "title": "Odpowiedzi 5xx / s",
+      "title": "Trenerzy i personel",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -149,13 +151,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total{status_class=\"5xx\"}[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "binturo_organizer_trainers_active_total{organizer_code=~\"$organizer_code\"} or binturo_organizer_staff_active_total{organizer_code=~\"$organizer_code\"}",
+          "legendFormat": "{{organizer_code}} {{__name__}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -163,7 +165,7 @@
     },
     {
       "id": 6,
-      "title": "Odpowiedzi 4xx / s",
+      "title": "Lokalizacje i sale",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -178,13 +180,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total{status_class=\"4xx\"}[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "binturo_organizer_locations_active_total{organizer_code=~\"$organizer_code\"} or binturo_organizer_rooms_total{organizer_code=~\"$organizer_code\"}",
+          "legendFormat": "{{organizer_code}} {{__name__}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -192,13 +194,13 @@
     },
     {
       "id": 7,
-      "title": "Udział błędów 5xx %",
-      "type": "timeseries",
+      "title": "Dni od ostatniej aktywności",
+      "type": "stat",
       "gridPos": {
         "x": 0,
         "y": 24,
         "w": 12,
-        "h": 8
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -207,21 +209,34 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (service) (rate(binturo_http_requests_total{status_class=\"5xx\"}[5m])) / clamp_min(sum by (service) (rate(binturo_http_requests_total[5m])), 0.000001)",
-          "legendFormat": "{{service}}"
+          "expr": "(time() - last_over_time(binturo_organizer_last_activity_timestamp_seconds{organizer_code=~\"$organizer_code\"}[48h])) / 86400",
+          "legendFormat": "{{organizer_code}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percent"
+          "unit": "d"
         },
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
     },
     {
       "id": 8,
-      "title": "Najczęściej wywoływane trasy",
+      "title": "Ruch organizacji — Top 10",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -236,13 +251,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (service, route) (rate(binturo_http_requests_total[5m])))",
-          "legendFormat": "{{service}} {{route}}"
+          "expr": "topk(10, sum by (organizer_code) (increase(binturo_organizer_traffic_events_total[1d])))",
+          "legendFormat": "{{organizer_code}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -250,7 +265,7 @@
     },
     {
       "id": 9,
-      "title": "Najwięcej błędów 5xx według trasy",
+      "title": "Ruch według roli",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -265,17 +280,44 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (service, route) (increase(binturo_http_requests_total{status_class=\"5xx\"}[1h])))",
-          "legendFormat": "{{service}} {{route}}"
+          "expr": "sum by (role) (rate(binturo_organizer_traffic_events_total[1h]))",
+          "legendFormat": "{{role}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "reqps"
         },
         "overrides": []
       },
       "options": {}
     }
-  ]
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "organizer_code",
+        "type": "query",
+        "label": "Organizacja",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus-staging"
+        },
+        "query": {
+          "query": "label_values(binturo_organizer_info, organizer_code)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "sort": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  }
 }

@@ -1,6 +1,6 @@
 {
   "uid": "binturo-staging-business",
-  "title": "Binturo / Wykorzystanie biznesowe",
+  "title": "Binturo / Wzrost platformy",
   "tags": [
     "binturo",
     "staging",
@@ -8,7 +8,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "refresh": "5m",
   "time": {
@@ -18,13 +18,13 @@
   "panels": [
     {
       "id": 1,
-      "title": "Zapisy i anulowania / 24 h",
-      "type": "timeseries",
+      "title": "Organizacje według statusu",
+      "type": "stat",
       "gridPos": {
         "x": 0,
         "y": 0,
         "w": 12,
-        "h": 8
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -33,8 +33,10 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (event, channel) (increase(binturo_enrollment_events_total[1d]))",
-          "legendFormat": "{{event}} · {{channel}}"
+          "expr": "count by (status) (last_over_time(binturo_organizer_info[48h]))",
+          "legendFormat": "{{status}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -43,17 +45,28 @@
         },
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
     },
     {
       "id": 2,
-      "title": "Sfinalizowane płatności / 24 h",
-      "type": "timeseries",
+      "title": "Unikalni użytkownicy — ostatni stan",
+      "type": "stat",
       "gridPos": {
         "x": 12,
         "y": 0,
         "w": 12,
-        "h": 8
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -62,8 +75,10 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (kind) (increase(binturo_payment_finalized_total[1d]))",
-          "legendFormat": "{{kind}}"
+          "expr": "last_over_time(binturo_global_users_total[48h])",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -72,17 +87,28 @@
         },
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
     },
     {
       "id": 3,
-      "title": "Zdarzenia subskrypcji / 24 h",
-      "type": "timeseries",
+      "title": "Aktywni klienci organizacji — suma członkostw",
+      "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 5,
         "w": 12,
-        "h": 8
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -91,8 +117,10 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (outcome) (increase(binturo_subscription_payment_events_total[1d]))",
-          "legendFormat": "{{outcome}}"
+          "expr": "sum(last_over_time(binturo_organizer_clients_active_total[48h]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -101,15 +129,27 @@
         },
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "description": "Jedna osoba w kilku organizacjach liczy się kilka razy."
     },
     {
       "id": 4,
-      "title": "Aktywni klienci organizacji",
+      "title": "Nowe konta / tydzień",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 8,
+        "y": 5,
         "w": 12,
         "h": 8
       },
@@ -120,8 +160,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(binturo_organizer_clients_active_total)",
-          "legendFormat": "klienci"
+          "expr": "increase(binturo_global_user_registered_total[7d])",
+          "legendFormat": "rejestracje"
         }
       ],
       "fieldConfig": {
@@ -134,11 +174,11 @@
     },
     {
       "id": 5,
-      "title": "Organizacje według statusu",
+      "title": "Unikalni użytkownicy w czasie",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -149,8 +189,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count by (status) (binturo_organizer_info)",
-          "legendFormat": "{{status}}"
+          "expr": "binturo_global_users_total",
+          "legendFormat": "osoby"
         }
       ],
       "fieldConfig": {
@@ -163,11 +203,11 @@
     },
     {
       "id": 6,
-      "title": "Zajęcia w tym tygodniu",
+      "title": "Aktywni klienci organizacji w czasie",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 16,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -178,8 +218,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(binturo_organizer_classes_current_week_total)",
-          "legendFormat": "zajęcia"
+          "expr": "sum(binturo_organizer_clients_active_total)",
+          "legendFormat": "członkostwa"
         }
       ],
       "fieldConfig": {
@@ -189,6 +229,120 @@
         "overrides": []
       },
       "options": {}
+    },
+    {
+      "id": 7,
+      "title": "Liczba organizacji w czasie",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-staging"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(binturo_organizer_info)",
+          "legendFormat": "organizacje"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 8,
+      "title": "Nowe organizacje / 7 dni",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 12,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-staging"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(last_over_time(binturo_platform_organizer_registered_at_timestamp_seconds[48h]) > time() - 7 * 86400) or vector(0)",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "description": "Liczba organizacji z datą rejestracji w ostatnich siedmiu dniach."
+    },
+    {
+      "id": 9,
+      "title": "Organizacje według planu",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 12,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-staging"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count by (plan_name) (last_over_time(binturo_platform_organizer_subscription_info[48h]))",
+          "legendFormat": "{{plan_name}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
     }
   ]
 }

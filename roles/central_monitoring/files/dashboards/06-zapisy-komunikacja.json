@@ -1,10 +1,10 @@
 {
-  "uid": "binturo-staging-backends",
-  "title": "Binturo / Backend i HTTP",
+  "uid": "binturo-staging-engagement",
+  "title": "Binturo / Zapisy i komunikacja",
   "tags": [
     "binturo",
     "staging",
-    "backend"
+    "biznes"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -18,7 +18,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Żądania HTTP / s",
+      "title": "Zapisy i anulowania / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -33,13 +33,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "sum by (event, channel) (increase(binturo_enrollment_events_total[1d]))",
+          "legendFormat": "{{event}} · {{channel}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -47,7 +47,7 @@
     },
     {
       "id": 2,
-      "title": "Czas odpowiedzi p50",
+      "title": "Zapisy samoobsługowe i przez personel",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -62,13 +62,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p50 {{service}}"
+          "expr": "sum by (channel) (increase(binturo_enrollment_events_total{event=~\"created_confirmed|created_waitlist\"}[1d]))",
+          "legendFormat": "{{channel}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -76,7 +76,7 @@
     },
     {
       "id": 3,
-      "title": "Czas odpowiedzi p95",
+      "title": "Sfinalizowane płatności / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -91,13 +91,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p95 {{service}}"
+          "expr": "sum by (kind) (increase(binturo_payment_finalized_total[1d]))",
+          "legendFormat": "{{kind}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -105,7 +105,7 @@
     },
     {
       "id": 4,
-      "title": "Czas odpowiedzi p99",
+      "title": "Wiadomości organizacji / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -120,13 +120,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.99, sum by (service, le) (rate(binturo_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p99 {{service}}"
+          "expr": "sum by (channel, direction) (increase(binturo_message_events_total[1d]))",
+          "legendFormat": "{{channel}} {{direction}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -134,7 +134,7 @@
     },
     {
       "id": 5,
-      "title": "Odpowiedzi 5xx / s",
+      "title": "Wiadomości platformy / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -149,13 +149,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total{status_class=\"5xx\"}[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "sum by (channel, source) (increase(binturo_platform_message_events_total[1d]))",
+          "legendFormat": "{{channel}} {{source}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -163,7 +163,7 @@
     },
     {
       "id": 6,
-      "title": "Odpowiedzi 4xx / s",
+      "title": "Webhooki Stripe / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -178,13 +178,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (rate(binturo_http_requests_total{status_class=\"4xx\"}[5m]))",
-          "legendFormat": "{{service}}"
+          "expr": "sum by (outcome) (increase(binturo_stripe_webhook_events_total[1d]))",
+          "legendFormat": "{{outcome}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -192,7 +192,7 @@
     },
     {
       "id": 7,
-      "title": "Udział błędów 5xx %",
+      "title": "Decyzje moderacji / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -207,13 +207,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (service) (rate(binturo_http_requests_total{status_class=\"5xx\"}[5m])) / clamp_min(sum by (service) (rate(binturo_http_requests_total[5m])), 0.000001)",
-          "legendFormat": "{{service}}"
+          "expr": "sum by (status) (increase(binturo_moderation_decisions_total[1d]))",
+          "legendFormat": "{{status}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percent"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -221,7 +221,7 @@
     },
     {
       "id": 8,
-      "title": "Najczęściej wywoływane trasy",
+      "title": "Decyzje po przeglądzie / 24 h",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -236,37 +236,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (service, route) (rate(binturo_http_requests_total[5m])))",
-          "legendFormat": "{{service}} {{route}}"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "options": {}
-    },
-    {
-      "id": 9,
-      "title": "Najwięcej błędów 5xx według trasy",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 0,
-        "y": 32,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-staging"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "topk(10, sum by (service, route) (increase(binturo_http_requests_total{status_class=\"5xx\"}[1h])))",
-          "legendFormat": "{{service}} {{route}}"
+          "expr": "sum by (decision) (increase(binturo_moderation_review_decisions_total[1d]))",
+          "legendFormat": "{{decision}}"
         }
       ],
       "fieldConfig": {

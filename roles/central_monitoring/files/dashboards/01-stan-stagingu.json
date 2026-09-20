@@ -8,7 +8,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "refresh": "5m",
   "time": {
@@ -18,11 +18,97 @@
   "panels": [
     {
       "id": 1,
-      "title": "Dostępność celów Prometheusa",
-      "type": "timeseries",
+      "title": "Wiek ostatniej próbki",
+      "type": "stat",
       "gridPos": {
         "x": 0,
         "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-staging"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max_over_time(timestamp(up{job=\"prometheus\"})[48h:5m])",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "description": "Czas od ostatniej próbki w migawce. Duża wartość oznacza nieaktualne dane centralne."
+    },
+    {
+      "id": 2,
+      "title": "Cele — ostatni znany stan",
+      "type": "stat",
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 16,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-staging"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "last_over_time(up{job=~\"prometheus|node|caddy|postgres|binturo-platform|binturo-organizers\"}[48h])",
+          "legendFormat": "{{job}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "description": "Stan z ostatnich 48 godzin, nie bieżący test dostępności."
+    },
+    {
+      "id": 3,
+      "title": "Dostępność celów w czasie",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
         "w": 24,
         "h": 8
       },
@@ -46,12 +132,12 @@
       "options": {}
     },
     {
-      "id": 2,
+      "id": 4,
       "title": "Błędy HTTP 5xx / s",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -75,41 +161,12 @@
       "options": {}
     },
     {
-      "id": 3,
-      "title": "Wiek ostatniego uruchomienia crona",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 12,
-        "y": 8,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus-staging"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "time() - binturo_platform_cron_last_run_timestamp_seconds",
-          "legendFormat": "cron"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "options": {}
-    },
-    {
-      "id": 4,
-      "title": "Ostatni wynik crona",
+      "id": 5,
+      "title": "Wiek ostatniego crona",
       "type": "stat",
       "gridPos": {
-        "x": 0,
-        "y": 16,
+        "x": 12,
+        "y": 13,
         "w": 12,
         "h": 5
       },
@@ -120,8 +177,52 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "binturo_platform_cron_last_run_success",
-          "legendFormat": "1 = sukces"
+          "expr": "time() - last_over_time(binturo_platform_cron_last_run_timestamp_seconds[48h])",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Ostatni wynik crona",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-staging"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "last_over_time(binturo_platform_cron_last_run_success[48h])",
+          "legendFormat": "1 = sukces",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -144,13 +245,13 @@
       }
     },
     {
-      "id": 5,
+      "id": 7,
       "title": "Zajętość dysku %",
       "type": "timeseries",
       "gridPos": {
-        "x": 12,
-        "y": 16,
-        "w": 12,
+        "x": 8,
+        "y": 21,
+        "w": 16,
         "h": 8
       },
       "datasource": {

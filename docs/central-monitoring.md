@@ -7,6 +7,13 @@ centralną kopię stagingu. Grafana jest dostępna przez prywatny adres
 `http://10.0.0.2:3000`.
 Produkcję można dodać później do `central_monitoring_sources`.
 
+Prometheus na stagingu odpytuje cele co **15 sekund**: tę wartość ustawia
+`global.scrape_interval` w `roles/monitoring/templates/prometheus.yml.j2`.
+Dotyczy to także jobów `binturo-platform` i `binturo-organizers`, które nie
+ustawiają własnego interwału. Osobny timer przenosi migawkę na `kirisek` raz
+na dobę o 03:00. Odświeżanie dashboardu Grafany nie zmienia częstotliwości
+zbierania metryk.
+
 ## Przygotowanie
 
 ### Kirisek: Ubuntu 22.04 z `docker.io 29.1.3`
@@ -16,6 +23,27 @@ pozostałych wariantów pakietów poniżej. Pakiet Ubuntu na tym serwerze nie
 zawiera instalatora rootless. Istniejący demon `docker.io` obsługuje działający
 PostgreSQL, więc pozostaje uruchomiony. Rootless Docker instalujemy osobno w
 katalogu domowym `binturo`.
+
+**Strefa czasu serwera.** Administrator `kirisek` ustawia ją jednorazowo jako
+`root` (konto `binturo` nie ma wymaganego `sudo`):
+
+```bash
+timedatectl set-timezone Europe/Warsaw
+timedatectl status
+date
+```
+
+Po zmianie zaloguj się nową sesją jako `binturo` i sprawdź termin kolejnej
+synchronizacji:
+
+```bash
+systemctl --user list-timers binturo-monitoring-sync.timer
+systemd-analyze calendar '*-*-* 03:00:00'
+```
+
+`central_monitoring_schedule: "*-*-* 03:00:00"` będzie oznaczał godzinę
+03:00 czasu `Europe/Warsaw`, również po zmianie między CET i CEST. Zmiana
+strefy nie zmienia znaczników czasu już zapisanych metryk.
 
 **1. Jako `root` doinstaluj wymagane narzędzia i Compose:**
 
@@ -448,17 +476,20 @@ bieżącego stanu stagingu między synchronizacjami.
 
 ### Dashboardy Grafany
 
-Playbook kopiuje cztery dashboardy z
+Playbook kopiuje siedem dashboardów z
 `roles/central_monitoring/files/dashboards/` do katalogu na `kirisek` i
 udostępnia je Grafanie przez provisioning plikowy. Po ponownym uruchomieniu
 centralnego playbooka są dostępne w folderze **Binturo**:
 
 | Dashboard | Zakres |
 | --- | --- |
-| Stan stagingu | `up`, błędy 5xx, ostatni cron, zajętość dysku |
-| Zasoby hosta | CPU, pamięć, dyski i sieć z node-exportera |
-| Obciążenie backendów | Żądania, p95 czasu odpowiedzi, 4xx/5xx i najczęstsze trasy |
-| Wykorzystanie biznesowe | Zapisy, płatności, subskrypcje, aktywni klienci, organizacje i zajęcia |
+| Stan stagingu | Wiek ostatniej próbki, ostatni znany stan celów, błędy 5xx, cron i dysk |
+| Zasoby hosta i bazy | CPU, pamięć, dyski, sieć, połączenia, rozmiar baz i transakcje PostgreSQL |
+| Backend i HTTP | Ruch, p50/p95/p99, błędy oraz najczęstsze trasy obu backendów |
+| Wzrost platformy | Organizacje, plany, unikalni użytkownicy i członkostwa w organizacjach |
+| Organizacje i zaangażowanie | Klienci, zajęcia, kadra, miejsca, aktywność i ruch według organizacji |
+| Zapisy i komunikacja | Zapisy, płatności za zajęcia, wiadomości, webhooki i moderacja |
+| Subskrypcje i płatności | Statusy, plany, wygaśnięcia, zdarzenia i kwoty płatności |
 
 Na kontrolerze Ansible wdroż je poleceniem:
 
@@ -471,19 +502,44 @@ wprowadzaj w repozytorium i wdrażaj ponownie playbookiem; konfiguracja
 `allowUiUpdates: false` blokuje zapisywanie zmian tych dashboardów w GUI.
 Dashboardy wskazują źródło `prometheus-staging`. Ich panele biznesowe
 wymagają, aby joby `binturo-platform` i `binturo-organizers` miały `up=1`.
+Kafelek **Wiek ostatniej próbki** pokazuje opóźnienie kopii centralnej.
+Kafelki „ostatni stan” szukają próbek z ostatnich 48 godzin; gdy nie było
+udanej synchronizacji dłużej, pokazują brak danych. Wykresy czasowe pokazują
+historię ze stagingu, nie bieżący stan serwera. Domyślny zakres 7 dni mieści
+się w obecnej retencji lokalnego Prometheusa (10 dni lub 10 GB).
+Kwoty `applied_mock` są wydzielone jako płatności testowe i nie oznaczają
+przychodu. Dane o ruchu HTTP nie mierzą wykorzystania CPU/RAM przez
+poszczególne kontenery; ten podział wymaga dodatkowych metryk kontenerów.
+Źródłem dashboardów jest `scripts/build_monitoring_dashboards.py`; po zmianie
+definicji paneli uruchom ten skrypt, a następnie playbook.
 Oba backendy słuchają na `127.0.0.1`, dlatego lokalny Prometheus pobiera ich
 metryki przez wewnętrzny listener Caddy na porcie `19091`, ze ścieżek
-`/platform/metrics` i `/organizers/metrics`. Po wdrożeniu stagingowego
+`/platform/metrics` i `/organizers/metrics`. Rootless Docker mapuje
+`host.docker.internal` na `10.0.2.2`; plik
+`docker.service.d/binturo-monitoring.conf` włącza dostęp kontenerów do
+loopback hosta, a Caddy nasłuchuje na `127.0.0.1:19091`. Domyślne
+`host-gateway` (`172.17.0.1`) wskazywało bramę sieci kontenera i zwracało
+`connection refused`. Ta zmiana pozwala wszystkim kontenerom tego demona
+rootless łączyć się z usługami hosta na loopback, dlatego nie należy
+uruchamiać w nim niezaufanych kontenerów. Wdrożenie `03-site.yml` restartuje
+rootless Docker, czyli także kontenery PostgreSQL i monitoringu; wykonaj je
+w odpowiednim oknie serwisowym.
+
+Po wdrożeniu stagingowego
 `03-site.yml` sprawdź na stagingu:
 
 ```bash
+pgrep -a rootlesskit
 curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:19091/platform/metrics
 curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:19091/organizers/metrics
+DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock" docker exec binturo-prometheus wget -q -O /dev/null http://10.0.2.2:19091/metrics
 curl -fsSG --data-urlencode 'query=up{job="binturo-platform"}' http://127.0.0.1:19090/api/v1/query
 curl -fsSG --data-urlencode 'query=up{job="binturo-organizers"}' http://127.0.0.1:19090/api/v1/query
 ```
 
-Oba endpointy powinny zwrócić `200`, a oba zapytania `up` wartość `1`.
+W wierszu RootlessKit nie powinno już być `--disable-host-loopback`.
+Oba endpointy powinny zwrócić `200`, test z kontenera zakończyć się bez
+błędu, a oba zapytania `up` pokazać wartość `1` po najbliższym scrape (15 s).
 Następnie uruchom synchronizację na `kirisek`, aby centralny Prometheus dostał
 nowe próbki. Okres, w którym backendy nie były scrape'owane, pozostanie
 pusty; synchronizacja nie odtwarza historycznych metryk, których nie zebrał
