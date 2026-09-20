@@ -12,3 +12,7 @@ central_monitoring_sources:
     host: 146.59.3.169
     port: 4285
     user: binturo
+  prod:
+    host: 51.68.151.77
+    port: 2416
+    user: binturo

@@ -1,13 +1,12 @@
 # Centralny monitoring
 
-Serwer `binturo-monitoring` nie wymaga publicznego adresu. Obecnie łączy się
-przez SSH tylko ze stagingiem raz na dobę. Lokalny Prometheus cały czas zbiera
-metryki. Każdy transfer pobiera pełną migawkę TSDB, a Grafana odczytuje
-centralną kopię stagingu. Grafana jest dostępna przez prywatny adres
-`http://10.0.0.2:3000`.
-Produkcję można dodać później do `central_monitoring_sources`.
+Serwer `binturo-monitoring` nie wymaga publicznego adresu. Łączy się
+przez SSH ze stagingiem i produkcją raz na dobę. Lokalny Prometheus na każdym
+hoście stale zbiera metryki. Każdy transfer pobiera pełną migawkę TSDB, a
+Grafana odczytuje osobne kopie obu środowisk. Grafana jest dostępna przez
+prywatny adres `http://10.0.0.2:3000`.
 
-Prometheus na stagingu odpytuje cele co **15 sekund**: tę wartość ustawia
+Prometheus na stagingu i produkcji odpytuje cele co **15 sekund**: tę wartość ustawia
 `global.scrape_interval` w `roles/monitoring/templates/prometheus.yml.j2`.
 Dotyczy to także jobów `binturo-platform` i `binturo-organizers`, które nie
 ustawiają własnego interwału. Osobny timer przenosi migawkę na `kirisek` raz
@@ -273,7 +272,7 @@ test -w /data/binturo/binturo-monitoring
 
 1. Ustaw adres i konto SSH serwera centralnego w
    `inventories/monitoring/hosts.yml`. Serwer musi mieć dostęp wychodzący do
-   portu SSH stagingu. Ustaw poprawny adres i port w
+   portów SSH stagingu i produkcji. Ustaw poprawne adresy i porty w
    `inventories/monitoring/group_vars/all/vars.yml`.
 2. Utwórz `inventories/monitoring/group_vars/all/vault.yml` na podstawie
    `inventories/monitoring/vault.example.yml`, ustaw hasło administratora
@@ -289,8 +288,9 @@ test -w /data/binturo/binturo-monitoring
    Playbook uruchamia Grafanę w rootless Docker, tworzy klucz SSH i włącza
    timer użytkownika.
 4. Odczytaj klucz publiczny z `~/.ssh/binturo-monitoring-ed25519.pub` na
-   serwerze centralnym. Wstaw go jako `central_monitoring_public_key` w
-   zmiennych stagingu, po czym uruchom stagingowy `03-site.yml`.
+   serwerze centralnym. Sprawdź, czy odpowiada wartości
+   `central_monitoring_public_key` w `group_vars/all.yml`, po czym uruchom
+   `03-site.yml` dla stagingu i produkcji.
    Klucz jest instalowany w `authorized_keys` użytkownika `binturo`, który
    uruchamia rootless Docker i lokalnego Prometheusa. Ansible loguje się na
    staging jako `binturo_s`, a na produkcję jako `binturo_p`; te konta
@@ -309,8 +309,9 @@ test -w /data/binturo/binturo-monitoring
    cat "$HOME/.ssh/binturo-monitoring-ed25519.pub"
    ```
 
-   Skopiuj całą pojedynczą linię zaczynającą się od `ssh-ed25519` do
-   `inventories/staging/group_vars/all/vars.yml` na kontrolerze Ansible:
+   Jeśli klucz w repozytorium jest inny, skopiuj całą pojedynczą linię
+   zaczynającą się od `ssh-ed25519` do `group_vars/all.yml` na kontrolerze
+   Ansible:
 
    ```yaml
    central_monitoring_public_key: "ssh-ed25519 AAAA... binturo@kirisek"
@@ -318,14 +319,21 @@ test -w /data/binturo/binturo-monitoring
 
    Zastąp przykład rzeczywistą linią z pliku `.pub`. Klucza prywatnego nie
    kopiuj i nie zapisuj w repozytorium. Następnie na kontrolerze uruchom
-   z normalnymi parametrami dostępu Ansible dla stagingu:
+   z normalnymi parametrami dostępu Ansible dla obu środowisk:
 
    ```bash
    ansible-playbook -i inventories/staging/hosts.yml 03-site.yml --ask-vault-pass
    ```
 
-   Klucz publiczny zostanie zainstalowany na koncie `binturo` stagingu.
-5. Na serwerze centralnym dodaj zweryfikowany klucz hosta stagingu do
+   ```bash
+   ansible-playbook -i inventories/prod/hosts.yml 03-site.yml --ask-vault-pass
+   ```
+
+   Klucz publiczny zostanie zainstalowany na koncie `binturo` obu hostów.
+   Produkcyjny playbook uruchamia także lokalnego Prometheusa, Caddy i
+   eksportery. Zmiana sieci rootless Docker restartuje kontenery na hoście;
+   zaplanuj wdrożenie produkcyjne w oknie serwisowym.
+5. Na serwerze centralnym dodaj zweryfikowane klucze hostów do
    `~/.ssh/known_hosts` konta `binturo` na `kirisek`. Zweryfikuj
    fingerprinty niezależnie;
    skrypt wymaga `StrictHostKeyChecking=yes`.
@@ -394,9 +402,9 @@ Jeśli dziennik synchronizacji pokazuje ślad z pliku
 `prometheus-snapshot` i `Connection refused`, klucz
 SSH zadziałał, ale skrypt na serwerze źródłowym nie połączył się z lokalnym
 Prometheusem. Domyślnie skrypt wywołuje API na `127.0.0.1:19090`, zgodnie z
-portem w `group_vars/all.yml`. Obecnie synchronizowany jest tylko staging.
+portem w `group_vars/all.yml`. Synchronizowane są staging i produkcja.
 Jeśli dziennik wskazuje `/srv/binturo/monitoring/prometheus-snapshot`,
-jest to właściwa ścieżka stagingu przy obecnym `binturo_root`. Sprawdź
+jest to właściwa ścieżka obu środowisk przy obecnym `binturo_root`. Sprawdź
 wdrożoną listę źródeł na `kirisek`:
 
 ```bash
@@ -472,11 +480,11 @@ uruchomi synchronizacji. Po udanym przebiegu otwórz w Grafanie
 a następnie w **Explore** wykonaj zapytanie `up`.
 
 `up` pokazuje stan celów Prometheusa w pobranej migawce. Nie jest to podgląd
-bieżącego stanu stagingu między synchronizacjami.
+bieżącego stanu środowisk między synchronizacjami.
 
 ### Dashboardy Grafany
 
-Playbook kopiuje siedem dashboardów z
+Playbook kopiuje po siedem dashboardów dla stagingu i produkcji z
 `roles/central_monitoring/files/dashboards/` do katalogu na `kirisek` i
 udostępnia je Grafanie przez provisioning plikowy. Po ponownym uruchomieniu
 centralnego playbooka są dostępne w folderze **Binturo**:
@@ -500,7 +508,8 @@ ansible-playbook -i inventories/monitoring/hosts.yml playbooks/central-monitorin
 Grafana po wdrożeniu odczytuje dashboardy z plików JSON. Zmiany paneli
 wprowadzaj w repozytorium i wdrażaj ponownie playbookiem; konfiguracja
 `allowUiUpdates: false` blokuje zapisywanie zmian tych dashboardów w GUI.
-Dashboardy wskazują źródło `prometheus-staging`. Ich panele biznesowe
+Dashboardy stagingu wskazują źródło `prometheus-staging`, a dashboardy
+produkcji `prometheus-prod`. Ich panele biznesowe
 wymagają, aby joby `binturo-platform` i `binturo-organizers` miały `up=1`.
 Kafelek **Wiek ostatniej próbki** pokazuje opóźnienie kopii centralnej.
 Kafelki „ostatni stan” szukają próbek z ostatnich 48 godzin; gdy nie było
@@ -612,23 +621,58 @@ Endpoint administracyjny lokalnego Prometheusa zostaje włączony wyłącznie na
 API związanym z `127.0.0.1:19090`; przez SSH dostęp ma ograniczony klucz.
 Nie publikuj tego portu ani portu 3000 na interfejsie publicznym.
 
-## Późniejsze włączenie produkcji
+## Pierwsza synchronizacja produkcji
 
-Gdy będzie potrzebna synchronizacja produkcji, dopisz jej konfigurację do
-`central_monitoring_sources` w
-`inventories/monitoring/group_vars/all/vars.yml`:
+`central_monitoring_sources` zawiera już `prod` z adresem `51.68.151.77`,
+portem SSH `2416` i kontem `binturo`. Klucz publiczny serwera centralnego
+jest wspólną zmienną `central_monitoring_public_key` w `group_vars/all.yml`.
+Po produkcyjnym `03-site.yml` sprawdź na serwerze produkcyjnym:
 
-```yaml
-  prod:
-    host: 51.68.151.77
-    port: 2416
-    user: binturo
+```bash
+curl -fsSG --data-urlencode 'query=up{job="binturo-platform"}' http://127.0.0.1:19090/api/v1/query
 ```
 
-Następnie dodaj centralny klucz publiczny jako `central_monitoring_public_key`
-do `inventories/prod/group_vars/all/vars.yml`, uruchom produkcyjny
-`03-site.yml`, zweryfikuj i dodaj klucz hosta produkcji do `known_hosts`
-konta `binturo` na `kirisek`, po czym ponownie uruchom centralny playbook
-i usługę synchronizacji. Kontener produkcji i jej źródło w Grafanie powstaną
-po udanym pobraniu migawki. Wyłączenie produkcji z konfiguracji nie usuwa
-wcześniej pobranych plików w `data/prod`.
+```bash
+curl -fsSG --data-urlencode 'query=up{job="binturo-organizers"}' http://127.0.0.1:19090/api/v1/query
+```
+
+Oba joby powinny mieć `up=1`. Następnie odczytaj odcisk klucza hosta na
+produkcji jako administrator:
+
+```bash
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Na `kirisek`, jako `binturo`, pobierz klucz hosta produkcji do osobnego
+pliku, sprawdź jego odcisk i dopiero po zgodności dodaj go do `known_hosts`:
+
+```bash
+ssh-keyscan -p 2416 -t ed25519 51.68.151.77 > "$HOME/.ssh/binturo-prod-hostkey"
+```
+
+```bash
+ssh-keygen -lf "$HOME/.ssh/binturo-prod-hostkey"
+```
+
+```bash
+cat "$HOME/.ssh/binturo-prod-hostkey" >> "$HOME/.ssh/known_hosts"
+```
+
+Wdróż centralny playbook, a potem uruchom synchronizację ręcznie:
+
+```bash
+ansible-playbook -i inventories/monitoring/hosts.yml playbooks/central-monitoring.yml --ask-vault-pass
+```
+
+```bash
+systemctl --user start binturo-monitoring-sync.service
+```
+
+```bash
+journalctl --user -u binturo-monitoring-sync.service -n 100 --no-pager
+```
+
+Ostatnie dwa polecenia wykonaj na `kirisek` jako `binturo`. Po pierwszej
+udanej migawce pojawi się kontener `prometheus-prod`; źródło
+`prometheus-prod` i osobne dashboardy produkcji są provisionowane przez
+centralny playbook.

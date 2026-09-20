@@ -1,5 +1,6 @@
 """Build the provisioned Grafana dashboards from concise panel definitions."""
 
+from copy import deepcopy
 import json
 from pathlib import Path
 
@@ -58,6 +59,18 @@ def dashboard(filename, uid, title, tags, definitions, *, period="now-7d", varia
         }]}
     with (OUTPUT / filename).open("w", encoding="utf-8", newline="\n") as result:
         result.write(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+
+    prod = deepcopy(data)
+    prod["uid"] = uid.replace("binturo-staging-", "binturo-prod-")
+    prod["title"] = title.replace("Binturo / ", "Binturo PROD / ").replace("Stan stagingu", "Stan produkcji")
+    prod["tags"] = ["prod" if tag == "staging" else tag for tag in prod["tags"]]
+    for item in prod["panels"]:
+        item["datasource"]["uid"] = "prometheus-prod"
+    if variables:
+        prod["templating"]["list"][0]["datasource"]["uid"] = "prometheus-prod"
+    prod_filename = f"prod-{filename.replace('stan-stagingu', 'stan-produkcji')}"
+    with (OUTPUT / prod_filename).open("w", encoding="utf-8", newline="\n") as result:
+        result.write(json.dumps(prod, ensure_ascii=False, indent=2) + "\n")
 
 
 def main():
