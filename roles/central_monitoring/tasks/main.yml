@@ -4,6 +4,8 @@
     that:
       - central_monitoring_schedule | length > 0
       - central_monitoring_grafana_admin_password | string | length >= 12
+      - central_monitoring_grafana_bind_address | length > 0
+      - central_monitoring_grafana_bind_address not in ['0.0.0.0', '::']
       - central_monitoring_sources | length > 0
       - central_monitoring_sources.keys() | list | difference(['staging', 'prod']) | length == 0
       - ansible_host != 'CHANGE_ME'

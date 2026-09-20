@@ -3,7 +3,8 @@
 Serwer `binturo-monitoring` nie wymaga publicznego adresu. Obecnie łączy się
 przez SSH tylko ze stagingiem raz na dobę. Lokalny Prometheus cały czas zbiera
 metryki. Każdy transfer pobiera pełną migawkę TSDB, a Grafana odczytuje
-centralną kopię stagingu. Panel nasłuchuje wyłącznie na `127.0.0.1:3000`.
+centralną kopię stagingu. Grafana jest dostępna przez prywatny adres
+`http://10.0.0.2:3000`.
 Produkcję można dodać później do `central_monitoring_sources`.
 
 ## Przygotowanie
@@ -308,13 +309,18 @@ test -w /data/binturo/binturo-monitoring
    journalctl --user -u binturo-monitoring-sync.service -n 100 --no-pager
    ```
 
-7. Otwórz Grafanę tunelem SSH z własnego komputera:
+7. Otwórz Grafanę z urządzenia mającego dostęp do prywatnej sieci:
 
-   ```bash
-   ssh -L 3000:127.0.0.1:3000 <konto>@<prywatny-adres-serwera>
+   ```text
+   http://10.0.0.2:3000
    ```
 
-   Następnie przejdź do `http://127.0.0.1:3000`.
+   Mapowanie portu jest związane tylko z adresem `10.0.0.2`, określonym przez
+   `central_monitoring_grafana_bind_address` w inventory. Administrator hosta
+   powinien dopuścić TCP/3000 jedynie z wybranych adresów lub podsieci tej
+   sieci. Playbook nie zmienia zapory systemowej, bo konto Ansible nie ma
+   uprawnień `sudo`. Grafana nadal wymaga logowania. Po zmianie IP uruchom
+   ponownie centralny playbook, który odtworzy kontener z nowym mapowaniem.
 
 ### Weryfikacja kluczy SSH serwerów źródłowych
 

@@ -17,9 +17,10 @@ services:
     image: {{ central_monitoring_grafana_image }}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "{{ central_monitoring_grafana_bind_address }}:3000:3000"
     environment:
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "http://{{ central_monitoring_grafana_bind_address }}:3000/"
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
     volumes:
       - grafana_data:/var/lib/grafana
