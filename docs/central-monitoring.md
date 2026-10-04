@@ -451,15 +451,15 @@ systemctl --user start binturo-monitoring-sync.service
 journalctl --user -u binturo-monitoring-sync.service -n 100 --no-pager
 ```
 
-Po późniejszym dodaniu produkcji ta sama diagnostyka będzie dotyczyć również jej.
+Ta sama diagnostyka dotyczy produkcji.
 
 ## Po zalogowaniu do Grafany
 
-Playbook tworzy źródło danych `Prometheus staging`, ale przy pierwszym
+Playbook tworzy źródła danych `Prometheus staging` i `Prometheus prod`, ale przy pierwszym
 wdrożeniu uruchamia tylko Grafanę. Kontener Prometheusa powstaje dopiero po
 udanym pobraniu migawki z kroku 6. Przed pierwszą synchronizacją zapytanie
 w Grafanie może zwrócić błąd DNS
-`lookup prometheus-staging ... server misbehaving`.
+`lookup prometheus-prod ... server misbehaving` (analogicznie dla stagingu).
 Na serwerze centralnym, w sesji SSH konta `binturo`, sprawdź i uruchom:
 
 ```bash
@@ -471,8 +471,13 @@ journalctl --user -u binturo-monitoring-sync.service -n 100 --no-pager
 docker compose -f /data/binturo/binturo-monitoring/compose.yml -p binturo-central-monitoring ps -a
 ```
 
-Kontener `prometheus-staging` powinien mieć stan `running`. Jeśli pierwszy
-przebieg się nie udał, sprawdź w `journalctl`
+Kontenery `prometheus-staging` i `prometheus-prod` powinny mieć stan `running`.
+Jeśli usługa synchronizacji kończy się sukcesem, ale dziennik pokazuje tylko
+staging, sprawdź oba wiersze w `sources.conf` i upewnij się, że wdrożony
+`sync.sh` uruchamia `ssh -n`. Bez `-n` klient SSH może odczytać pozostałe
+wiersze pliku będącego wejściem pętli i produkcja zostanie pominięta.
+Ponowne wdrożenie centralnego playbooka instaluje poprawiony skrypt.
+Jeśli pierwszy przebieg się nie udał, sprawdź w `journalctl`
 przyczynę: uprawnienie klucza na serwerze źródłowym, wpis w `known_hosts`,
 łączność SSH albo dostępne miejsce. Samo ponowienie zapytania w Grafanie nie
 uruchomi synchronizacji. Po udanym przebiegu otwórz w Grafanie
@@ -512,6 +517,10 @@ Dashboardy stagingu wskazują źródło `prometheus-staging`, a dashboardy
 produkcji `prometheus-prod`. Ich panele biznesowe
 wymagają, aby joby `binturo-platform` i `binturo-organizers` miały `up=1`.
 Kafelek **Wiek ostatniej próbki** pokazuje opóźnienie kopii centralnej.
+Panel **Cele — ostatni znany stan** wybiera najnowszą serię każdego joba z
+ostatnich 48 godzin. Dzięki temu po zmianie adresu celu nie pokazuje
+jednocześnie starego `up=0` i nowego `up=1`. Wartość `0` jest czerwona;
+sam wiek migawki zmienia kolor dopiero po ponad 26 godzinach.
 Kafelki „ostatni stan” szukają próbek z ostatnich 48 godzin; gdy nie było
 udanej synchronizacji dłużej, pokazują brak danych. Wykresy czasowe pokazują
 historię ze stagingu, nie bieżący stan serwera. Domyślny zakres 7 dni mieści

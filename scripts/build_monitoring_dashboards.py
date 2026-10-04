@@ -11,9 +11,10 @@ WINDOW = "48h"
 
 
 def panel(title, expr, *, kind="timeseries", unit="short", legend="", width=12,
-          instant=False, description=None):
+          instant=False, description=None, thresholds=None):
     return dict(title=title, expr=expr, kind=kind, unit=unit, legend=legend,
-                width=width, instant=instant, description=description)
+                width=width, instant=instant, description=description,
+                thresholds=thresholds)
 
 
 def dashboard(filename, uid, title, tags, definitions, *, period="now-7d", variables=None):
@@ -37,6 +38,13 @@ def dashboard(filename, uid, title, tags, definitions, *, period="now-7d", varia
         }
         if spec["description"]:
             item["description"] = spec["description"]
+        if spec["thresholds"]:
+            item["fieldConfig"]["defaults"]["thresholds"] = {
+                "mode": "absolute", "steps": [
+                    {"color": color, "value": value}
+                    for value, color in spec["thresholds"]
+                ],
+            }
         if spec["kind"] == "stat":
             item["options"] = {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
                                "orientation": "auto", "textMode": "auto", "colorMode": "value"}
@@ -75,15 +83,22 @@ def dashboard(filename, uid, title, tags, definitions, *, period="now-7d", varia
 
 def main():
     last = lambda metric: f"last_over_time({metric}[{WINDOW}])"
+    monitored_jobs = 'up{job=~"prometheus|node|caddy|postgres|binturo-platform|binturo-organizers"}'
+    latest_job_state = (
+        f"{last(monitored_jobs)} and "
+        f"topk by (job) (1, max_over_time(timestamp({monitored_jobs})[48h:1m]))"
+    )
     dashboard("01-stan-stagingu.json", "binturo-staging-status", "Binturo / Stan stagingu",
               ["infrastruktura"], [
         panel("Wiek ostatniej próbki", "time() - max_over_time(timestamp(up{job=\"prometheus\"})[48h:5m])",
               kind="stat", unit="s", instant=True, width=8,
-              description="Czas od ostatniej próbki w migawce. Duża wartość oznacza nieaktualne dane centralne."),
-        panel("Cele — ostatni znany stan", f"{last('up{job=~\"prometheus|node|caddy|postgres|binturo-platform|binturo-organizers\"}')}",
+              description="Czas od ostatniej próbki w migawce. Duża wartość oznacza nieaktualne dane centralne.",
+              thresholds=[(None, "green"), (93600, "yellow"), (108000, "red")]),
+        panel("Cele — ostatni znany stan", latest_job_state,
               kind="stat", instant=True, width=16, legend="{{job}}",
-              description="Stan z ostatnich 48 godzin, nie bieżący test dostępności."),
-        panel("Dostępność celów w czasie", 'up{job=~"prometheus|node|caddy|postgres|binturo-platform|binturo-organizers"}',
+              description="Najnowszy cel każdego joba z ostatnich 48 godzin; 0 oznacza błąd ostatniego odczytu. Stan z migawki, nie bieżący test dostępności.",
+              thresholds=[(None, "red"), (1, "green")]),
+        panel("Dostępność celów w czasie", monitored_jobs,
               width=24, legend="{{job}}"),
         panel("Błędy HTTP 5xx / s", 'sum by (service) (rate(binturo_http_requests_total{status_class="5xx"}[5m]))',
               unit="reqps", legend="{{service}}"),

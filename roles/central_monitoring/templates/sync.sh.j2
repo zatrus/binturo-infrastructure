@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT={{ central_monitoring_root | quote }}
 KEY={{ central_monitoring_ssh_key | quote }}
 IMAGE={{ central_monitoring_prometheus_image | quote }}
+EXPECTED_SOURCES={{ central_monitoring_sources | length }}
 export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
 exec 9>"$ROOT/sync.lock"
 flock -n 9 || exit 0
@@ -43,8 +44,11 @@ ready() {
   return 1
 }
 
-while read -r source remote_user host port; do
+processed=0
+# Jinja may omit the final newline in sources.conf. Process that last line too.
+while read -r source remote_user host port || [[ -n "${source:-}" ]]; do
   [[ -n "$source" ]] || continue
+  processed=$((processed + 1))
   echo "Synchronizing Prometheus snapshot: $source ($remote_user@$host:$port)"
   incoming=$(mktemp -d "$ROOT/data/.incoming-${source}.XXXXXX")
   previous="$ROOT/data/.previous-${source}"
@@ -55,7 +59,8 @@ while read -r source remote_user host port; do
   fi
   cleanup() { volume_op delete "$incoming"; }
   trap cleanup EXIT
-  ssh -i "$KEY" -p "$port" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+  # Do not let ssh consume the remaining rows from the loop's sources.conf.
+  ssh -n -i "$KEY" -p "$port" -o BatchMode=yes -o StrictHostKeyChecking=yes \
     "$remote_user@$host" sync | tar -xf - -C "$incoming"
   test -n "$(find "$incoming" -maxdepth 1 -type d -name '01*' -print -quit)"
   volume_op chown "$incoming"
@@ -75,3 +80,7 @@ while read -r source remote_user host port; do
     exit 1
   fi
 done < "$ROOT/sources.conf"
+if (( processed != EXPECTED_SOURCES )); then
+  echo "Processed $processed of $EXPECTED_SOURCES monitoring sources from $ROOT/sources.conf" >&2
+  exit 1
+fi

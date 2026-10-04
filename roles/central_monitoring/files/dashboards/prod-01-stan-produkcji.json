@@ -41,7 +41,24 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s"
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 93600
+              },
+              {
+                "color": "red",
+                "value": 108000
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -76,7 +93,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "last_over_time(up{job=~\"prometheus|node|caddy|postgres|binturo-platform|binturo-organizers\"}[48h])",
+          "expr": "last_over_time(up{job=~\"prometheus|node|caddy|postgres|binturo-platform|binturo-organizers\"}[48h]) and topk by (job) (1, max_over_time(timestamp(up{job=~\"prometheus|node|caddy|postgres|binturo-platform|binturo-organizers\"})[48h:1m]))",
           "legendFormat": "{{job}}",
           "instant": true,
           "range": false
@@ -84,7 +101,20 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -100,7 +130,7 @@
         "textMode": "auto",
         "colorMode": "value"
       },
-      "description": "Stan z ostatnich 48 godzin, nie bieżący test dostępności."
+      "description": "Najnowszy cel każdego joba z ostatnich 48 godzin; 0 oznacza błąd ostatniego odczytu. Stan z migawki, nie bieżący test dostępności."
     },
     {
       "id": 3,
