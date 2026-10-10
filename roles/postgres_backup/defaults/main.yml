@@ -1,0 +1,13 @@
+---
+
+# Keep optional transfer settings at role-default precedence so environment
+# inventory variables can enable and configure prod-to-staging transfers.
+postgres_backup_transfer_enabled: false
+postgres_backup_receive_enabled: false
+postgres_backup_transfer_host: ""
+postgres_backup_transfer_port: 22
+postgres_backup_transfer_user: "{{ binturo_user }}"
+postgres_backup_transfer_private_key: ""
+postgres_backup_transfer_public_key: ""
+postgres_backup_transfer_known_host: ""
+postgres_backup_transfer_source_address: ""

@@ -67,15 +67,6 @@ postgres_backup_weekly_days: 28
 postgres_backup_max_age_days: 90
 postgres_backup_local_dir: "{{ binturo_root }}/backups/local/{{ environment_name }}"
 postgres_backup_remote_dir: "{{ binturo_root }}/backups/remote/prod"
-postgres_backup_transfer_enabled: false
-postgres_backup_receive_enabled: false
-postgres_backup_transfer_host: ""
-postgres_backup_transfer_port: 22
-postgres_backup_transfer_user: "{{ binturo_user }}"
-postgres_backup_transfer_private_key: ""
-postgres_backup_transfer_public_key: ""
-postgres_backup_transfer_known_host: ""
-postgres_backup_transfer_source_address: ""
 
 # Async SQLAlchemy connection pool used by binturo-organizers.
 organizers_db_pool_size: 5
