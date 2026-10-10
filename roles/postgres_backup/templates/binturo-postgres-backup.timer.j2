@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Binturo PostgreSQL backup every three hours
+
+[Timer]
+OnCalendar={{ postgres_backup_schedule }}
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=10min
+Unit=binturo-postgres-backup.service
+
+[Install]
+WantedBy=timers.target

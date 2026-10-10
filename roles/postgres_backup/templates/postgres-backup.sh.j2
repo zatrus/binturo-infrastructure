@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+transfer=true
+if [[ "${1:-}" == "--no-transfer" ]]; then
+  transfer=false
+elif [[ $# -ne 0 ]]; then
+  echo "usage: binturo-postgres-backup [--no-transfer]" >&2
+  exit 64
+fi
+
+backup_dir={{ postgres_backup_local_dir | quote }}
+database={{ postgres_database | quote }}
+backup_user={{ postgres_backup_user | quote }}
+container={{ postgres_container_name | quote }}
+password_file={{ (binturo_root + '/secrets/postgres_backup_password') | quote }}
+encryption_file={{ (binturo_root + '/secrets/postgres_backup_encryption_passphrase') | quote }}
+lock_file={{ (binturo_root + '/backups/.postgres-backup.lock') | quote }}
+timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+filename="binturo_{{ environment_name }}_${timestamp}.dump.gpg"
+final="$backup_dir/$filename"
+work_dir=$(mktemp -d "$backup_dir/.backup.XXXXXX")
+plain="$work_dir/database.dump"
+encrypted="$work_dir/$filename"
+gpg_home="$work_dir/gnupg"
+mkdir -m 0700 "$gpg_home"
+trap 'rm -rf -- "$work_dir"' EXIT
+
+exec 9>"$lock_file"
+flock -n 9 || { echo "another PostgreSQL backup is already running" >&2; exit 75; }
+printf '%s\n' "$(tr -d '\r\n' <"$password_file")" |
+  docker exec -i "$container" bash -c '
+    IFS= read -r PGPASSWORD; export PGPASSWORD
+    exec pg_dump --host=127.0.0.1 --username="$1" --dbname="$2" \
+      --format=custom --compress=zstd:6 --no-password
+  ' _ "$backup_user" "$database" >"$plain"
+docker exec -i "$container" pg_restore --list <"$plain" >/dev/null
+gpg --homedir "$gpg_home" --batch --yes --pinentry-mode loopback --cipher-algo AES256 \
+  --passphrase-file "$encryption_file" --symmetric --output "$encrypted" "$plain"
+mv -- "$encrypted" "$final"
+sha256=$(sha256sum "$final" | awk '{print $1}')
+printf '%s  %s\n' "$sha256" "$filename" >"$final.sha256"
+printf '{"environment":"%s","database":"%s","created_at":"%s","sha256":"%s"}\n' \
+  {{ environment_name | quote }} "$database" "$timestamp" "$sha256" >"$final.json"
+/usr/local/sbin/binturo-postgres-backup-retention "$backup_dir"
+
+{% if postgres_backup_transfer_enabled %}
+if [[ "$transfer" == true ]]; then
+  ssh -T -i /home/{{ binturo_user }}/.ssh/postgres-backup-transfer \
+    -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile=/home/{{ binturo_user }}/.ssh/postgres-backup-known-hosts \
+    -p {{ postgres_backup_transfer_port | int }} \
+    {{ postgres_backup_transfer_user | quote }}@{{ postgres_backup_transfer_host | quote }} \
+    "receive $filename $sha256" <"$final"
+fi
+{% endif %}
+echo "created $final"

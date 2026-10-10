@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+backup=""
+confirmation=""
+while (($#)); do
+  case "$1" in
+    --backup) backup=${2:-}; shift 2 ;;
+    --confirm) confirmation=${2:-}; shift 2 ;;
+    *) echo "usage: binturo-postgres-restore --backup FILE --confirm {{ environment_name }}" >&2; exit 64 ;;
+  esac
+done
+
+[[ $EUID -eq 0 ]] || { echo "restore must be run as root" >&2; exit 77; }
+[[ "$confirmation" == "{{ environment_name }}" ]] || {
+  echo "confirmation must exactly equal {{ environment_name }}" >&2; exit 64;
+}
+[[ -n "$backup" && -f "$backup" ]] || { echo "backup file does not exist" >&2; exit 66; }
+backup=$(realpath -e -- "$backup")
+case "$backup" in
+  {{ (binturo_root + '/backups/') | quote }}*) ;;
+  *) echo "backup must be below {{ binturo_root }}/backups" >&2; exit 65 ;;
+esac
+[[ "$backup" =~ /binturo_[a-z0-9_-]+_[0-9]{8}T[0-9]{6}Z\.dump\.gpg$ ]] || {
+  echo "invalid backup filename" >&2; exit 65;
+}
+[[ -f "$backup.sha256" ]] || { echo "missing checksum sidecar" >&2; exit 66; }
+(cd "$(dirname "$backup")" && sha256sum --check "$(basename "$backup").sha256")
+
+work_dir=$(mktemp -d /tmp/binturo-postgres-restore.XXXXXX)
+plain="$work_dir/database.dump"
+gpg_home="$work_dir/gnupg"
+mkdir -m 0700 "$gpg_home"
+timer_stopped=false
+cleanup() {
+  rm -rf -- "$work_dir"
+  if [[ "$timer_stopped" == true ]]; then systemctl start binturo-postgres-backup.timer; fi
+}
+trap cleanup EXIT
+gpg --homedir "$gpg_home" --batch --yes --pinentry-mode loopback \
+  --passphrase-file {{ (binturo_root + '/secrets/postgres_backup_encryption_passphrase') | quote }} \
+  --decrypt --output "$plain" "$backup"
+
+docker_as_binturo=(runuser -u {{ binturo_user | quote }} -- env
+  XDG_RUNTIME_DIR=/run/user/{{ binturo_uid }} DOCKER_HOST={{ docker_rootless_socket | quote }} docker)
+"${docker_as_binturo[@]}" exec -i {{ postgres_container_name | quote }} pg_restore --list \
+  <"$plain" >/dev/null
+
+systemctl stop binturo-postgres-backup.timer
+timer_stopped=true
+if systemctl is-active --quiet binturo-postgres-backup.service; then
+  echo "a scheduled backup is still running; retry restore later" >&2
+  exit 75
+fi
+
+echo "creating a pre-restore safety backup"
+runuser -u {{ binturo_user | quote }} -- env \
+  XDG_RUNTIME_DIR=/run/user/{{ binturo_uid }} DOCKER_HOST={{ docker_rootless_socket | quote }} \
+  /usr/local/sbin/binturo-postgres-backup --no-transfer
+
+install -o {{ binturo_user | quote }} -g {{ binturo_group | quote }} -m 0640 /dev/null \
+  {{ (caddy_maintenance_dir + '/' + caddy_maintenance_marker) | quote }}
+systemctl stop binturo-organizers.service binturo-platform.service
+
+sql="SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{{ postgres_database }}' AND pid <> pg_backend_pid(); DROP DATABASE IF EXISTS \"{{ postgres_database }}\"; CREATE DATABASE \"{{ postgres_database }}\" OWNER \"{{ postgres_platform_user }}\" TEMPLATE template0 ENCODING 'UTF8';"
+"${docker_as_binturo[@]}" exec {{ postgres_container_name | quote }} psql \
+  --username={{ postgres_superuser | quote }} --dbname=postgres \
+  --set=ON_ERROR_STOP=1 --command="$sql"
+"${docker_as_binturo[@]}" exec -i {{ postgres_container_name | quote }} pg_restore \
+  --exit-on-error --username={{ postgres_superuser | quote }} \
+  --dbname={{ postgres_database | quote }} <"$plain"
+"${docker_as_binturo[@]}" compose --project-name binturo-{{ environment_name }} \
+  --file {{ (binturo_root + '/compose/compose.postgres.yml') | quote }} \
+  run --rm postgres-bootstrap
+
+systemctl start binturo-platform.service binturo-organizers.service
+echo "restore completed; maintenance remains enabled for operator smoke tests"
+echo "remove {{ caddy_maintenance_dir }}/{{ caddy_maintenance_marker }} only after verification"

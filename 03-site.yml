@@ -9,6 +9,7 @@
     - directory_layout
     - python_venvs
     - postgres
+    - postgres_backup
     - backend_services
     - platform_cron
     - organizers_logrotate

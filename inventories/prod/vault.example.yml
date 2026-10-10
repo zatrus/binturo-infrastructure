@@ -3,6 +3,12 @@ vault_postgres_superuser_password: CHANGE_ME
 vault_postgres_platform_password: CHANGE_ME
 vault_postgres_organizers_password: CHANGE_ME
 vault_postgres_backup_password: CHANGE_ME
+vault_postgres_backup_encryption_passphrase: CHANGE_ME_LONG_RANDOM_BACKUP_PASSPHRASE
+vault_postgres_backup_transfer_private_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  CHANGE_ME
+  -----END OPENSSH PRIVATE KEY-----
+vault_postgres_backup_transfer_known_host: "[146.59.3.169]:4285 ssh-ed25519 CHANGE_ME"
 vault_organizers_jwt_secret: CHANGE_ME_MINIMUM_32_RANDOM_CHARACTERS
 vault_platform_jwt_secret: CHANGE_ME_DIFFERENT_MINIMUM_32_RANDOM_CHARACTERS
 vault_organizers_mailersend_api_key: ""

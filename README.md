@@ -286,6 +286,9 @@ wdrożenia części workflowowej w repozytorium aplikacji znajduje się w
 
 ## PostgreSQL
 
+Automatyczne backupy, transfer prod → staging i procedura odtwarzania są opisane
+w [docs/postgresql-backup-restore.md](docs/postgresql-backup-restore.md).
+
 Ansible tworzy:
 
 - bazę `binturo_dev` albo `binturo_prod`;

@@ -1,0 +1,133 @@
+---
+- name: Validate PostgreSQL backup configuration
+  ansible.builtin.assert:
+    that:
+      - postgres_backup_daily_hours | int >= 3
+      - postgres_backup_weekly_days | int >= 1
+      - (postgres_backup_max_age_days | int) > (postgres_backup_weekly_days | int)
+      - (postgres_backup_daily_hours | int) <= ((postgres_backup_weekly_days | int) * 24)
+      - postgres_backup_encryption_passphrase | default('') | length >= 32
+      - (postgres_backup_local_dir | regex_search('^/')) is not none
+      - not postgres_backup_transfer_enabled or postgres_backup_transfer_host | length > 0
+      - not postgres_backup_transfer_enabled or postgres_backup_transfer_private_key | length > 0
+      - not postgres_backup_transfer_enabled or postgres_backup_transfer_known_host | length > 0
+      - not postgres_backup_receive_enabled or postgres_backup_transfer_public_key | length > 0
+      - not postgres_backup_receive_enabled or postgres_backup_transfer_source_address | length > 0
+    fail_msg: >-
+      Configure the backup encryption passphrase and, for prod-to-staging
+      transfer, its dedicated SSH key and pinned host key in Ansible Vault.
+
+- name: Install PostgreSQL backup runtime packages
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - openssh-client
+      - util-linux
+    state: present
+    update_cache: true
+
+- name: Create PostgreSQL backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0750"
+  loop: "{{ [postgres_backup_local_dir] + ([postgres_backup_remote_dir] if postgres_backup_receive_enabled else []) }}"
+
+- name: Install PostgreSQL backup encryption secret
+  ansible.builtin.copy:
+    content: "{{ postgres_backup_encryption_passphrase }}\n"
+    dest: "{{ binturo_root }}/secrets/postgres_backup_encryption_passphrase"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0600"
+  no_log: true
+
+- name: Create PostgreSQL backup SSH directory
+  ansible.builtin.file:
+    path: "/home/{{ binturo_user }}/.ssh"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0700"
+  when: postgres_backup_transfer_enabled
+
+- name: Install dedicated PostgreSQL backup transfer credentials
+  ansible.builtin.copy:
+    content: "{{ item.content }}\n"
+    dest: "{{ item.dest }}"
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - content: "{{ postgres_backup_transfer_private_key }}"
+      dest: "/home/{{ binturo_user }}/.ssh/postgres-backup-transfer"
+      mode: "0600"
+    - content: "{{ postgres_backup_transfer_known_host }}"
+      dest: "/home/{{ binturo_user }}/.ssh/postgres-backup-known-hosts"
+      mode: "0644"
+  no_log: true
+  when: postgres_backup_transfer_enabled
+
+- name: Install PostgreSQL backup scripts
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: "{{ binturo_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - src: postgres-backup-retention.sh.j2
+      dest: /usr/local/sbin/binturo-postgres-backup-retention
+      mode: "0750"
+    - src: postgres-backup.sh.j2
+      dest: /usr/local/sbin/binturo-postgres-backup
+      mode: "0750"
+    - src: postgres-restore.sh.j2
+      dest: /usr/local/sbin/binturo-postgres-restore
+      mode: "0750"
+
+- name: Install restricted PostgreSQL backup receiver
+  ansible.builtin.template:
+    src: postgres-backup-receive.sh.j2
+    dest: /usr/local/sbin/binturo-postgres-backup-receive
+    owner: root
+    group: "{{ binturo_group }}"
+    mode: "0755"
+  when: postgres_backup_receive_enabled
+
+- name: Authorize the restricted production backup transfer key
+  ansible.posix.authorized_key:
+    user: "{{ binturo_user }}"
+    key: "{{ postgres_backup_transfer_public_key }}"
+    key_options: >-
+      from="{{ postgres_backup_transfer_source_address }}",restrict,command="/usr/local/sbin/binturo-postgres-backup-receive"
+    state: present
+    exclusive: false
+  when: postgres_backup_receive_enabled
+
+- name: Install PostgreSQL backup systemd units
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/etc/systemd/system/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - src: binturo-postgres-backup.service.j2
+      dest: binturo-postgres-backup.service
+    - src: binturo-postgres-backup.timer.j2
+      dest: binturo-postgres-backup.timer
+  notify: Restart PostgreSQL backup timer
+
+- name: Apply pending PostgreSQL backup unit changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start PostgreSQL backup timer
+  ansible.builtin.systemd_service:
+    name: binturo-postgres-backup.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode

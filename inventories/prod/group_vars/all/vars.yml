@@ -28,6 +28,15 @@ caddy_cloudflare_origin_private_key: "{{ vault_cloudflare_origin_private_key }}"
 postgres_database: binturo_prod
 postgres_data_path: "{{ binturo_root }}/persistent/postgres"
 
+# Push every successful encrypted production backup to staging.
+postgres_backup_transfer_enabled: true
+postgres_backup_transfer_host: 146.59.3.169
+postgres_backup_transfer_port: 4285
+postgres_backup_transfer_private_key: "{{ vault_postgres_backup_transfer_private_key }}"
+# Pinned staging ED25519 host key in known_hosts format, including [host]:port.
+postgres_backup_transfer_known_host: "{{ vault_postgres_backup_transfer_known_host }}"
+postgres_backup_encryption_passphrase: "{{ vault_postgres_backup_encryption_passphrase }}"
+
 organizers_email_client: smtp
 organizers_mailersend_from_email: "contact@binturo.com"
 organizers_mailersend_from_name: Binturo

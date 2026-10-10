@@ -1,0 +1,21 @@
+[Unit]
+Description=Create and replicate encrypted Binturo PostgreSQL backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User={{ binturo_user }}
+Group={{ binturo_group }}
+Environment=XDG_RUNTIME_DIR=/run/user/{{ binturo_uid }}
+Environment=DOCKER_HOST={{ docker_rootless_socket }}
+ExecStart=/usr/local/sbin/binturo-postgres-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths={{ binturo_root }}/backups
+TimeoutStartSec=2h
