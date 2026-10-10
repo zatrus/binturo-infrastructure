@@ -55,18 +55,22 @@ if systemctl is-active --quiet binturo-postgres-backup.service; then
 fi
 
 echo "creating a pre-restore safety backup"
-runuser -u {{ binturo_user | quote }} -- env \
-  XDG_RUNTIME_DIR=/run/user/{{ binturo_uid }} DOCKER_HOST={{ docker_rootless_socket | quote }} \
-  /usr/local/sbin/binturo-postgres-backup --no-transfer
+(
+  cd /
+  runuser -u {{ binturo_user | quote }} -- env \
+    XDG_RUNTIME_DIR=/run/user/{{ binturo_uid }} DOCKER_HOST={{ docker_rootless_socket | quote }} \
+    /usr/local/sbin/binturo-postgres-backup --no-transfer
+)
 
 install -o {{ binturo_user | quote }} -g {{ binturo_group | quote }} -m 0640 /dev/null \
   {{ (caddy_maintenance_dir + '/' + caddy_maintenance_marker) | quote }}
 systemctl stop binturo-organizers.service binturo-platform.service
 
-sql="SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{{ postgres_database }}' AND pid <> pg_backend_pid(); DROP DATABASE IF EXISTS \"{{ postgres_database }}\"; CREATE DATABASE \"{{ postgres_database }}\" OWNER \"{{ postgres_platform_user }}\" TEMPLATE template0 ENCODING 'UTF8';"
-"${docker_as_binturo[@]}" exec {{ postgres_container_name | quote }} psql \
-  --username={{ postgres_superuser | quote }} --dbname=postgres \
-  --set=ON_ERROR_STOP=1 --command="$sql"
+psql_admin=("${docker_as_binturo[@]}" exec {{ postgres_container_name | quote }} psql
+  --username={{ postgres_superuser | quote }} --dbname=postgres --set=ON_ERROR_STOP=1)
+"${psql_admin[@]}" --command="SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{{ postgres_database }}' AND pid <> pg_backend_pid();"
+"${psql_admin[@]}" --command='DROP DATABASE IF EXISTS "{{ postgres_database }}";'
+"${psql_admin[@]}" --command='CREATE DATABASE "{{ postgres_database }}" OWNER "{{ postgres_platform_user }}" TEMPLATE template0 ENCODING '\''UTF8'\'';'
 "${docker_as_binturo[@]}" exec -i {{ postgres_container_name | quote }} pg_restore \
   --exit-on-error --username={{ postgres_superuser | quote }} \
   --dbname={{ postgres_database | quote }} <"$plain"
