@@ -26,6 +26,14 @@
     state: present
     update_cache: true
 
+- name: Create PostgreSQL backup root directory
+  ansible.builtin.file:
+    path: "{{ binturo_root }}/backups"
+    state: directory
+    owner: "{{ binturo_user }}"
+    group: "{{ binturo_group }}"
+    mode: "0750"
+
 - name: Create PostgreSQL backup directories
   ansible.builtin.file:
     path: "{{ item }}"
