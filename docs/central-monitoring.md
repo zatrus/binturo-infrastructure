@@ -1,7 +1,7 @@
 # Centralny monitoring
 
 Serwer `binturo-monitoring` nie wymaga publicznego adresu. Łączy się
-przez SSH ze stagingiem i produkcją raz na dobę. Lokalny Prometheus na każdym
+przez SSH ze stagingiem i produkcją raz na godzinę. Lokalny Prometheus na każdym
 hoście stale zbiera metryki. Każdy transfer pobiera pełną migawkę TSDB, a
 Grafana odczytuje osobne kopie obu środowisk. Grafana jest dostępna przez
 prywatny adres `http://10.0.0.2:3000`.
@@ -10,7 +10,7 @@ Prometheus na stagingu i produkcji odpytuje cele co **15 sekund**: tę wartość
 `global.scrape_interval` w `roles/monitoring/templates/prometheus.yml.j2`.
 Dotyczy to także jobów `binturo-platform` i `binturo-organizers`, które nie
 ustawiają własnego interwału. Osobny timer przenosi migawkę na `kirisek` raz
-na dobę o 03:00. Odświeżanie dashboardu Grafany nie zmienia częstotliwości
+na godzinę, o pełnej godzinie. Odświeżanie dashboardu Grafany nie zmienia częstotliwości
 zbierania metryk.
 
 ## Przygotowanie
@@ -37,11 +37,11 @@ synchronizacji:
 
 ```bash
 systemctl --user list-timers binturo-monitoring-sync.timer
-systemd-analyze calendar '*-*-* 03:00:00'
+systemd-analyze calendar '*-*-* *:00:00'
 ```
 
-`central_monitoring_schedule: "*-*-* 03:00:00"` będzie oznaczał godzinę
-03:00 czasu `Europe/Warsaw`, również po zmianie między CET i CEST. Zmiana
+`central_monitoring_schedule: "*-*-* *:00:00"` oznacza każdą pełną godzinę
+czasu `Europe/Warsaw`, również po zmianie między CET i CEST. Zmiana
 strefy nie zmienia znaczników czasu już zapisanych metryk.
 
 **1. Jako `root` doinstaluj wymagane narzędzia i Compose:**

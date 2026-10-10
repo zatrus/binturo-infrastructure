@@ -1,6 +1,6 @@
 ---
 central_monitoring_root: /data/binturo/binturo-monitoring
-central_monitoring_schedule: "*-*-* 03:00:00"
+central_monitoring_schedule: "*-*-* *:00:00"
 central_monitoring_retention: 30d
 central_monitoring_prometheus_image: prom/prometheus:v3.5.0
 central_monitoring_grafana_image: grafana/grafana:11.6.4
