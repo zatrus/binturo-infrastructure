@@ -1,6 +1,8 @@
 {{ organizers_application_log_file }} {
-    hourly
-    rotate -1
+    daily
+    maxsize 10M
+    maxage 90
+    rotate 1000
     missingok
     notifempty
     copytruncate
